@@ -1,37 +1,38 @@
 name: dispatch-to-marketplace
 
+# Triggert auf "Release published" (nicht auf push:tags), weil:
+#   - push:tags würde die Workflow-Definition im Tag-Commit suchen
+#   - der Tag liegt auf dem orphan release-Branch, der kein .github/ hat
+#   - release:published nutzt dagegen die Workflow-Definition von main
 on:
-  push:
-    tags: ["v*"]
+  release:
+    types: [published]
 
 jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (release branch)
+      - name: Verify release was created on the release branch
+        run: |
+          TARGET="${{ github.event.release.target_commitish }}"
+          if [ "$TARGET" != "release" ]; then
+            echo "ERROR: release target is '$TARGET', expected 'release'."
+            echo "Releases must be created on the 'release' branch."
+            exit 1
+          fi
+
+      - name: Checkout release branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}  # der Tag selbst — points at release-branch commit
+          ref: release
 
       - name: Parse version from tag
         id: ver
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#v}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-
-      - name: Sanity-check — tag must point to release-branch commit
-        shell: bash
-        run: |
-          # release-Branch HEAD holen
-          git fetch origin release
-          TAG_COMMIT=$(git rev-parse HEAD)
-          # Prüfen ob der Tag-Commit ein Ancestor (oder identisch) von release ist
-          if ! git merge-base --is-ancestor "$TAG_COMMIT" origin/release; then
-            echo "ERROR: tag ${GITHUB_REF_NAME} is not on release branch."
-            echo "Tags must be created on release-branch commits via the GitHub UI."
-            exit 1
-          fi
 
       - name: Read plugin metadata from plugin.json
         id: meta
@@ -44,7 +45,7 @@ jobs:
 
       - name: Dispatch to agent-marketplace
         env:
-          GH_PAT: ${{ secrets.MARKETPLACE_DISPATCH_TOKEN }}
+          GH_PAT:  ${{ secrets.MARKETPLACE_DISPATCH_TOKEN }}
           NAME:    ${{ steps.meta.outputs.name }}
           DESC:    ${{ steps.meta.outputs.description }}
           VERSION: ${{ steps.ver.outputs.version }}
