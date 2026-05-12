@@ -70,11 +70,28 @@ jobs:
 
           # Orphan branch — keine geteilte History mit main
           git checkout --orphan release
-          # Working tree leeren, aber .git behalten
+
+          # Index leeren (--orphan staget mains Files) und tracked Files
+          # vom Disk löschen
           git rm -rf . > /dev/null 2>&1 || true
+          # Untracked + gitignored Files (build/, dist/, bin/, *_cache, .egg-info)
+          # auch löschen, sonst landen sie via "git add -A" im release-Branch.
+          # -x ignoriert .gitignore-Regeln, -d auch in Unterordner, -f force.
+          git clean -fdx > /dev/null 2>&1 || true
+
+          # Sanity-check: außer .git/ darf jetzt nichts mehr da sein
+          leftover=$(find . -mindepth 1 -maxdepth 1 -not -name '.git' || true)
+          if [ -n "$leftover" ]; then
+            echo "ERROR: working tree nicht leer nach clean:"
+            echo "$leftover"
+            exit 1
+          fi
 
           # Nur den staged Tree reinkopieren
           cp -a "$TMP"/. .
+
+          echo "=== release branch contents ==="
+          find . -mindepth 1 -not -path './.git*' | sort
 
           git add -A
           git commit -m "release: v${{ steps.ver.outputs.version }}"
