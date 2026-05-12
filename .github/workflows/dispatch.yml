@@ -40,6 +40,21 @@ jobs:
         with:
           ref: release
 
+      - name: Verify plugin.json version matches tag
+        shell: bash
+        run: |
+          PJ_VERSION=$(jq -r '.version' .claude-plugin/plugin.json)
+          TAG_VERSION="${{ steps.tag.outputs.version }}"
+          if [ "$PJ_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::plugin.json version ($PJ_VERSION) != tag (${{ steps.tag.outputs.tag }})."
+            echo ""
+            echo "These must match. Either:"
+            echo "  (a) Delete this release+tag, bump pyproject.toml to ${TAG_VERSION},"
+            echo "      push main to rebuild release branch, then re-tag, OR"
+            echo "  (b) Delete this release+tag and create v${PJ_VERSION} instead."
+            exit 1
+          fi
+
       - name: Read plugin metadata from plugin.json
         id: meta
         shell: bash
