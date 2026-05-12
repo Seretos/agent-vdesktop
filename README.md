@@ -1,29 +1,67 @@
 # agent-vdesktop
 
-MCP-Server, mit dem ein AI-Agent **Microsoft Virtual Desktops auf Windows 11** steuern kann: Desktops erstellen/wechseln, Layouts anwenden (Spalten, Grid, Multi-Monitor), Chrome/Terminal/VS Code in einen Slot starten, Apps über mehrere Desktops pinnen, Fenster nach Label oder Inhalt addressieren.
+Let your AI coding agent control **Microsoft Virtual Desktops on Windows 11**: create and switch desktops, apply column / grid / multi-monitor layouts, launch Chrome / Windows Terminal / VS Code into specific layout slots, pin apps across desktops, and address windows by label or content.
 
-Funktioniert nativ unter Windows und aus WSL heraus.
+Works natively on Windows 11 **and from inside WSL** — the same binary runs in both contexts via Windows' `binfmt_misc` interop.
 
-## Install (Claude Code)
+## Quick install
+
+**Claude Code:**
 
 ```
 /plugin marketplace add Seretos/agent-marketplace
 /plugin install agent-vdesktop@agent-marketplace
 ```
 
-Das wars. Kein Python, kein `pip install` — die `.exe` ist self-contained.
+Self-contained `.exe` — no Python, no `pip install`, no dependencies.
 
-## Ausprobieren
+## Try it
 
-Sag dem Agent z.B.:
+Ask your agent something like:
 
-> erstelle einen Desktop "demo", 3-Spalten-Layout, links Chrome, mitte ein Terminal, rechts VS Code
+> create a desktop "demo", apply a 3-column layout, open Chrome on the left, a terminal in the middle, and VS Code on the right
 
-## Aus dem Source bauen
+The agent should call `create_desktop` → `apply_layout` → three `launch_*` tools, and the desktop should pop up.
+
+## Alternative installs
+
+### From the GitHub Releases page
+
+If your agent doesn't support marketplaces, or you want a specific version manually:
+
+1. Download `vdesktop-plugin-<version>.zip` from [Releases](https://github.com/Seretos/agent-vdesktop/releases).
+2. Unpack to a stable folder (e.g. `C:\Users\<you>\.claude\plugins\agent-vdesktop\`).
+3. In Claude Code:
+   ```
+   /plugin install <path-to-unpacked-folder>
+   ```
+
+### From the release branch
+
+The `release` branch always carries the latest install-ready files (no zip step):
+
+```
+git clone --branch release --depth 1 https://github.com/Seretos/agent-vdesktop.git
+```
+
+Then `/plugin install <cloned-path>` in Claude Code.
+
+### Build from source
+
+Requires Python 3.11+ (standard python.org installer with the `py` launcher).
 
 ```powershell
+git clone https://github.com/Seretos/agent-vdesktop.git
+cd agent-vdesktop
 py -3 -m pip install -e ".[build]"
 .\scripts\build.ps1 -Clean -Package
 ```
 
-Benötigt Python 3.11+. Output: `bin/vdesktop.exe` + `dist/vdesktop-plugin-<version>.zip`.
+Output: `bin/vdesktop.exe` plus `dist/vdesktop-plugin-<version>.zip`. Then install via `/plugin install <path>`.
+
+## Notes
+
+- **Windows 10 is not supported.** `IVirtualDesktopManagerInternal` semantics changed between Windows 10 and 11; only 11 works.
+- **WSL** invokes the `.exe` transparently — no separate setup needed.
+- If `list_desktops` raises `COMError` or `OSError`, the bundled `pyvda` predates your Windows build. Wait for the next release, or build from source after `pip install -U pyvda`.
+- Registry state (window labels, handle IDs) lives in memory and is reset when the MCP server restarts. Use `list_unmanaged_windows` + `adopt_window` to recover previously launched windows.
