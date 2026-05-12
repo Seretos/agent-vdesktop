@@ -83,14 +83,6 @@ jobs:
         shell: pwsh
         run: ./scripts/build.ps1 -Clean -Package
 
-      # dispatch.yml muss am Tag-Commit liegen, damit "push:tags" den Workflow
-      # findet. Vor dem orphan-Push also ins staging dir kopieren.
-      - name: Co-ship dispatch workflow on release branch
-        shell: bash
-        run: |
-          mkdir -p build/stage/vdesktop-plugin/.github/workflows
-          cp .github/workflows/dispatch.yml build/stage/vdesktop-plugin/.github/workflows/
-
       - name: Push orphan release branch and capture commit
         id: rel
         shell: bash
@@ -154,3 +146,32 @@ jobs:
             --generate-notes \
             ${{ contains(inputs.version, '-') && '--prerelease' || '' }} \
             "${{ steps.rel.outputs.asset }}"
+
+      # The tag we just created via gh/GITHUB_TOKEN does NOT fire push:tags
+      # in dispatch.yml — Actions blocks GITHUB_TOKEN-originated events to
+      # prevent recursive workflow loops. So call the marketplace directly
+      # from here.
+      - name: Dispatch to agent-marketplace
+        shell: bash
+        env:
+          GH_PAT:  ${{ secrets.MARKETPLACE_DISPATCH_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          DESC=$(jq -r '.description' .claude-plugin/plugin.json)
+          NAME=$(jq -r '.name'        .claude-plugin/plugin.json)
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer $GH_PAT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/Seretos/agent-marketplace/dispatches \
+            -d @- <<EOF
+          {
+            "event_type": "plugin-release",
+            "client_payload": {
+              "name":        "${NAME}",
+              "description": "${DESC}",
+              "repo":        "${{ github.repository }}",
+              "category":    "mcp",
+              "version":     "${VERSION}"
+            }
+          }
+          EOF

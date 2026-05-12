@@ -1,20 +1,16 @@
 name: dispatch-to-marketplace
 
-# Triggers:
-#   - push:tags v* — primary path. The release branch carries a copy of this
-#     workflow (release.yml stages it). When a release is published from the
-#     GitHub UI on the release branch, the tag points at a release-branch
-#     commit that contains this file, so GitHub Actions can resolve the
-#     workflow and run it.
-#   - workflow_dispatch — manual fallback. Available from any branch where
-#     this file lives.
+# Manual recovery tool. The normal release flow (release.yml) dispatches to
+# the marketplace itself. Use this only when:
+#   - The marketplace dispatch step in release.yml failed and you want to
+#     retry without re-running the whole build.
+#   - You need to re-publish an existing release to the marketplace (e.g.
+#     after the marketplace.json schema changed).
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to dispatch (e.g. v0.1.0)"
+        description: "Release tag to dispatch (e.g. v0.0.1)"
         required: true
         type: string
 
@@ -22,15 +18,11 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
-      - name: Resolve tag from event
+      - name: Resolve tag
         id: tag
         shell: bash
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            TAG="${GITHUB_REF_NAME}"
-          else
-            TAG="${{ inputs.tag }}"
-          fi
+          TAG="${{ inputs.tag }}"
           VERSION="${TAG#v}"
           echo "tag=${TAG}"         >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
@@ -46,12 +38,8 @@ jobs:
           PJ_VERSION=$(jq -r '.version' .claude-plugin/plugin.json)
           TAG_VERSION="${{ steps.tag.outputs.version }}"
           if [ "$PJ_VERSION" != "$TAG_VERSION" ]; then
-            echo "::error::plugin.json version ($PJ_VERSION) != tag (${{ steps.tag.outputs.tag }})."
-            echo ""
-            echo "These must match. Either:"
-            echo "  (a) Delete this release+tag, bump pyproject.toml to ${TAG_VERSION},"
-            echo "      push main to rebuild release branch, then re-tag, OR"
-            echo "  (b) Delete this release+tag and create v${PJ_VERSION} instead."
+            echo "::error::plugin.json on release branch is v$PJ_VERSION, but you asked to dispatch v$TAG_VERSION."
+            echo "Re-run release.yml with version=$TAG_VERSION (or re-check the release branch state)."
             exit 1
           fi
 
@@ -82,7 +70,7 @@ jobs:
             "client_payload": {
               "name":        "${NAME}",
               "description": "${DESC}",
-              "repo":        "Seretos/agent-vdesktop",
+              "repo":        "${{ github.repository }}",
               "category":    "mcp",
               "version":     "${VERSION}"
             }
