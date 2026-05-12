@@ -96,12 +96,24 @@ jobs:
         shell: bash
         run: |
           STAGE="build/stage/vdesktop-plugin"
+          ZIP="dist/vdesktop-plugin-${{ inputs.version }}.zip"
           if [ ! -d "$STAGE" ]; then
             echo "::error::staging dir not produced by build.ps1 -Package"; exit 1
           fi
+          if [ ! -f "$ZIP" ]; then
+            echo "::error::release zip $ZIP not produced by build.ps1 -Package"
+            ls -la dist/ || true
+            exit 1
+          fi
 
+          # Stash staging tree AND the release zip outside the worktree, since
+          # "git checkout --orphan" + clean will wipe dist/ before we attach
+          # the zip to the GitHub Release.
           TMP=$(mktemp -d)
           cp -a "$STAGE"/. "$TMP/"
+          ASSET_DIR=$(mktemp -d)
+          cp "$ZIP" "$ASSET_DIR/"
+          echo "asset=$ASSET_DIR/$(basename "$ZIP")" >> "$GITHUB_OUTPUT"
 
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -141,4 +153,4 @@ jobs:
             --title "v${{ inputs.version }}" \
             --generate-notes \
             ${{ contains(inputs.version, '-') && '--prerelease' || '' }} \
-            "dist/vdesktop-plugin-${{ inputs.version }}.zip"
+            "${{ steps.rel.outputs.asset }}"
