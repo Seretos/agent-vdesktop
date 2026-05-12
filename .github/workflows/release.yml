@@ -51,6 +51,15 @@ jobs:
         shell: pwsh
         run: ./scripts/build.ps1 -Clean -Package
 
+      # dispatch.yml muss am Tag-Commit liegen, damit "push:tags" den Workflow
+      # findet (siehe Kommentar im dispatch.yml selbst). Vor dem orphan-Push
+      # also ins staging dir kopieren.
+      - name: Co-ship dispatch workflow on release branch
+        shell: bash
+        run: |
+          mkdir -p build/stage/vdesktop-plugin/.github/workflows
+          cp .github/workflows/dispatch.yml build/stage/vdesktop-plugin/.github/workflows/
+
       # build.ps1 -Package staget bereits den install-ready Tree
       # nach build/stage/vdesktop-plugin/. Den nehmen wir als release-Branch-Inhalt.
       - name: Push orphan release branch

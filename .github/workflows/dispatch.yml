@@ -1,15 +1,16 @@
 name: dispatch-to-marketplace
 
 # Triggers:
-#   - release:published — primary path, fires when a release is published on
-#     the release branch from the GitHub UI. The workflow definition is read
-#     from the default branch (main), so it works even though the release-
-#     branch commit itself has no .github/ directory.
-#   - workflow_dispatch — manual fallback for re-running against an existing
-#     release (e.g. if GitHub's release event delivery missed it).
+#   - push:tags v* — primary path. The release branch carries a copy of this
+#     workflow (release.yml stages it). When a release is published from the
+#     GitHub UI on the release branch, the tag points at a release-branch
+#     commit that contains this file, so GitHub Actions can resolve the
+#     workflow and run it.
+#   - workflow_dispatch — manual fallback. Available from any branch where
+#     this file lives.
 on:
-  release:
-    types: [published]
+  push:
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
@@ -25,20 +26,14 @@ jobs:
         id: tag
         shell: bash
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            TAG="${{ github.event.release.tag_name }}"
-            TARGET="${{ github.event.release.target_commitish }}"
-            if [ "$TARGET" != "release" ]; then
-              echo "ERROR: release target is '$TARGET', expected 'release'."
-              echo "Releases must be created on the 'release' branch."
-              exit 1
-            fi
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${GITHUB_REF_NAME}"
           else
             TAG="${{ inputs.tag }}"
           fi
           VERSION="${TAG#v}"
-          echo "tag=${TAG}"           >> "$GITHUB_OUTPUT"
-          echo "version=${VERSION}"   >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}"         >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout release branch
         uses: actions/checkout@v4
