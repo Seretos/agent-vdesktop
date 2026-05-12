@@ -1,38 +1,49 @@
 name: dispatch-to-marketplace
 
-# Triggert auf "Release published" (nicht auf push:tags), weil:
-#   - push:tags würde die Workflow-Definition im Tag-Commit suchen
-#   - der Tag liegt auf dem orphan release-Branch, der kein .github/ hat
-#   - release:published nutzt dagegen die Workflow-Definition von main
+# Triggers:
+#   - release:published — primary path, fires when a release is published on
+#     the release branch from the GitHub UI. The workflow definition is read
+#     from the default branch (main), so it works even though the release-
+#     branch commit itself has no .github/ directory.
+#   - workflow_dispatch — manual fallback for re-running against an existing
+#     release (e.g. if GitHub's release event delivery missed it).
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to dispatch (e.g. v0.1.0)"
+        required: true
+        type: string
 
 jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify release was created on the release branch
+      - name: Resolve tag from event
+        id: tag
+        shell: bash
         run: |
-          TARGET="${{ github.event.release.target_commitish }}"
-          if [ "$TARGET" != "release" ]; then
-            echo "ERROR: release target is '$TARGET', expected 'release'."
-            echo "Releases must be created on the 'release' branch."
-            exit 1
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            TARGET="${{ github.event.release.target_commitish }}"
+            if [ "$TARGET" != "release" ]; then
+              echo "ERROR: release target is '$TARGET', expected 'release'."
+              echo "Releases must be created on the 'release' branch."
+              exit 1
+            fi
+          else
+            TAG="${{ inputs.tag }}"
           fi
+          VERSION="${TAG#v}"
+          echo "tag=${TAG}"           >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}"   >> "$GITHUB_OUTPUT"
 
       - name: Checkout release branch
         uses: actions/checkout@v4
         with:
           ref: release
-
-      - name: Parse version from tag
-        id: ver
-        shell: bash
-        run: |
-          TAG="${{ github.event.release.tag_name }}"
-          VERSION="${TAG#v}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Read plugin metadata from plugin.json
         id: meta
@@ -48,7 +59,7 @@ jobs:
           GH_PAT:  ${{ secrets.MARKETPLACE_DISPATCH_TOKEN }}
           NAME:    ${{ steps.meta.outputs.name }}
           DESC:    ${{ steps.meta.outputs.description }}
-          VERSION: ${{ steps.ver.outputs.version }}
+          VERSION: ${{ steps.tag.outputs.version }}
         shell: bash
         run: |
           curl -fsSL -X POST \
