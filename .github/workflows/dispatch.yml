@@ -67,7 +67,7 @@ jobs:
             "client_payload": {
               "name":        "${NAME}",
               "description": "${DESC}",
-              "source":      "Seretos/agent-vdesktop",
+              "repo":        "Seretos/agent-vdesktop",
               "category":    "mcp",
               "version":     "${VERSION}"
             }
