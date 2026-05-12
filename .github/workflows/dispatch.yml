@@ -1,0 +1,68 @@
+name: dispatch-to-marketplace
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (release branch)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}  # der Tag selbst — points at release-branch commit
+
+      - name: Parse version from tag
+        id: ver
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Sanity-check — tag must point to release-branch commit
+        shell: bash
+        run: |
+          # release-Branch HEAD holen
+          git fetch origin release
+          TAG_COMMIT=$(git rev-parse HEAD)
+          # Prüfen ob der Tag-Commit ein Ancestor (oder identisch) von release ist
+          if ! git merge-base --is-ancestor "$TAG_COMMIT" origin/release; then
+            echo "ERROR: tag ${GITHUB_REF_NAME} is not on release branch."
+            echo "Tags must be created on release-branch commits via the GitHub UI."
+            exit 1
+          fi
+
+      - name: Read plugin metadata from plugin.json
+        id: meta
+        shell: bash
+        run: |
+          DESC=$(jq -r '.description' .claude-plugin/plugin.json)
+          NAME=$(jq -r '.name'        .claude-plugin/plugin.json)
+          echo "description=${DESC}" >> "$GITHUB_OUTPUT"
+          echo "name=${NAME}"        >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch to agent-marketplace
+        env:
+          GH_PAT: ${{ secrets.MARKETPLACE_DISPATCH_TOKEN }}
+          NAME:    ${{ steps.meta.outputs.name }}
+          DESC:    ${{ steps.meta.outputs.description }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        shell: bash
+        run: |
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer $GH_PAT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/Seretos/agent-marketplace/dispatches \
+            -d @- <<EOF
+          {
+            "event_type": "plugin-release",
+            "client_payload": {
+              "name":        "${NAME}",
+              "description": "${DESC}",
+              "source":      "Seretos/agent-vdesktop",
+              "category":    "mcp",
+              "version":     "${VERSION}"
+            }
+          }
+          EOF

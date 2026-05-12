@@ -1,0 +1,81 @@
+name: release
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-push-release:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # orphan branch ops brauchen voll history
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: pyproject.toml
+
+      - name: Read version from pyproject.toml
+        id: ver
+        shell: pwsh
+        run: |
+          $line = Select-String -Path pyproject.toml -Pattern '(?m)^version\s*=\s*"([^"]+)"' |
+                  Select-Object -First 1
+          $version = $line.Matches[0].Groups[1].Value
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Version: $version"
+
+      - name: Stamp version into plugin.json
+        shell: pwsh
+        run: |
+          $manifestPath = ".claude-plugin/plugin.json"
+          $manifest = Get-Content $manifestPath -Raw
+          $manifest = [regex]::Replace(
+            $manifest,
+            '("version"\s*:\s*")[^"]*(")',
+            "`${1}${{ steps.ver.outputs.version }}`${2}"
+          )
+          Set-Content -Path $manifestPath -Value $manifest -NoNewline -Encoding UTF8
+
+      - name: Build .exe and stage package
+        shell: pwsh
+        run: ./scripts/build.ps1 -Clean -Package
+
+      # build.ps1 -Package staget bereits den install-ready Tree
+      # nach build/stage/vdesktop-plugin/. Den nehmen wir als release-Branch-Inhalt.
+      - name: Push orphan release branch
+        shell: bash
+        run: |
+          STAGE="build/stage/vdesktop-plugin"
+          if [ ! -d "$STAGE" ]; then
+            echo "ERROR: staging dir not produced by build.ps1 -Package"; exit 1
+          fi
+
+          # Stage außerhalb des Worktrees zwischenparken
+          TMP=$(mktemp -d)
+          cp -a "$STAGE"/. "$TMP/"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Orphan branch — keine geteilte History mit main
+          git checkout --orphan release
+          # Working tree leeren, aber .git behalten
+          git rm -rf . > /dev/null 2>&1 || true
+
+          # Nur den staged Tree reinkopieren
+          cp -a "$TMP"/. .
+
+          git add -A
+          git commit -m "release: v${{ steps.ver.outputs.version }}"
+          git push origin release --force
