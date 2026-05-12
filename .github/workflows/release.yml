@@ -34,6 +34,11 @@ jobs:
             exit 1
           fi
 
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Fail if tag already exists
         shell: bash
         run: |
@@ -45,11 +50,6 @@ jobs:
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Python 3.12
         uses: actions/setup-python@v5
