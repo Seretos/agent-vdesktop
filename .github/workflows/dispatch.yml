@@ -1,0 +1,90 @@
+name: dispatch-to-marketplace
+
+# Triggers:
+#   - push:tags v* — primary path. The release branch carries a copy of this
+#     workflow (release.yml stages it). When a release is published from the
+#     GitHub UI on the release branch, the tag points at a release-branch
+#     commit that contains this file, so GitHub Actions can resolve the
+#     workflow and run it.
+#   - workflow_dispatch — manual fallback. Available from any branch where
+#     this file lives.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to dispatch (e.g. v0.1.0)"
+        required: true
+        type: string
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve tag from event
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            TAG="${{ inputs.tag }}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=${TAG}"         >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: release
+
+      - name: Verify plugin.json version matches tag
+        shell: bash
+        run: |
+          PJ_VERSION=$(jq -r '.version' .claude-plugin/plugin.json)
+          TAG_VERSION="${{ steps.tag.outputs.version }}"
+          if [ "$PJ_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::plugin.json version ($PJ_VERSION) != tag (${{ steps.tag.outputs.tag }})."
+            echo ""
+            echo "These must match. Either:"
+            echo "  (a) Delete this release+tag, bump pyproject.toml to ${TAG_VERSION},"
+            echo "      push main to rebuild release branch, then re-tag, OR"
+            echo "  (b) Delete this release+tag and create v${PJ_VERSION} instead."
+            exit 1
+          fi
+
+      - name: Read plugin metadata from plugin.json
+        id: meta
+        shell: bash
+        run: |
+          DESC=$(jq -r '.description' .claude-plugin/plugin.json)
+          NAME=$(jq -r '.name'        .claude-plugin/plugin.json)
+          echo "description=${DESC}" >> "$GITHUB_OUTPUT"
+          echo "name=${NAME}"        >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch to agent-marketplace
+        env:
+          GH_PAT:  ${{ secrets.MARKETPLACE_DISPATCH_TOKEN }}
+          NAME:    ${{ steps.meta.outputs.name }}
+          DESC:    ${{ steps.meta.outputs.description }}
+          VERSION: ${{ steps.tag.outputs.version }}
+        shell: bash
+        run: |
+          curl -fsSL -X POST \
+            -H "Authorization: Bearer $GH_PAT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/Seretos/agent-marketplace/dispatches \
+            -d @- <<EOF
+          {
+            "event_type": "plugin-release",
+            "client_payload": {
+              "name":        "${NAME}",
+              "description": "${DESC}",
+              "repo":        "Seretos/agent-vdesktop",
+              "category":    "mcp",
+              "version":     "${VERSION}"
+            }
+          }
+          EOF
