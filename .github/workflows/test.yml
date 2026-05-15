@@ -35,3 +35,18 @@ jobs:
       - name: Run pytest
         shell: pwsh
         run: python -m pytest
+
+      # Regression guard for issue #9: without the explicit
+      # `git update-index --chmod=+x bin/vdesktop.exe` step in release.yml,
+      # the committed binary lands on the release branch with mode 0644 and
+      # MCP hosts under WSL fail to spawn it (EACCES). If anyone removes
+      # that step, this check fails the PR rather than shipping a broken
+      # release.
+      - name: Verify release.yml stamps bin/vdesktop.exe as executable
+        shell: bash
+        run: |
+          if ! grep -F 'git update-index --chmod=+x bin/vdesktop.exe' \
+                 .github/workflows/release.yml; then
+            echo "::error::release.yml is missing 'git update-index --chmod=+x bin/vdesktop.exe' — see issue #9."
+            exit 1
+          fi
