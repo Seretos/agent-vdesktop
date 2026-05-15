@@ -11,3 +11,8 @@ CHROME_WIDGET_CLASS = "Chrome_WidgetWin_1"
 
 # Windows Terminal's hosting window class.
 TERMINAL_CLASS = "CASCADIA_HOSTING_WINDOW_CLASS"
+
+# Mozilla Firefox top-level browser window class. Note this class alone is
+# NOT unique — every Firefox window shares it — so launchers must combine it
+# with either a stable spawn PID or a pre-spawn HWND snapshot.
+FIREFOX_WINDOW_CLASS = "MozillaWindowClass"

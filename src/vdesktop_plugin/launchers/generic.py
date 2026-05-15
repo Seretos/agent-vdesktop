@@ -1,5 +1,16 @@
 """Generic launcher for any executable. Used as a fallback when no specialized
-launcher fits the user's request."""
+launcher fits the user's request.
+
+Note on singleton apps (Chrome, Firefox, Windows Terminal, etc.): when their
+.exe is invoked, it forwards over IPC to an existing master process and the
+spawn PID exits, so PID-based HWND resolution silently grabs the wrong
+window. A bare ``class_name`` filter is rarely unique enough to disambiguate.
+Use the dedicated launchers (``launch_chrome``, ``launch_firefox``,
+``launch_terminal``) for those apps — they force standalone processes via
+fresh profile / user-data dirs or unique window titles. ``launch_app``
+remains the right tool only for non-singleton .exes or when the caller is
+prepared to supply tight ``identification`` hints.
+"""
 from __future__ import annotations
 
 import logging

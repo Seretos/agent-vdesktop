@@ -5,10 +5,11 @@ from __future__ import annotations
 
 
 def register(mcp) -> None:
-    from . import chrome, edge, generic, terminal, vscode
+    from . import chrome, edge, firefox, generic, terminal, vscode
 
     chrome.register(mcp)
     edge.register(mcp)
+    firefox.register(mcp)
     terminal.register(mcp)
     vscode.register(mcp)
     generic.register(mcp)
