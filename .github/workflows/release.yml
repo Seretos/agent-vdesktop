@@ -127,6 +127,13 @@ jobs:
           find . -mindepth 1 -not -path './.git*' | sort
 
           git add -A
+          # WSL/Linux clones need the executable bit on the EXE so the kernel
+          # can dispatch it through binfmt_misc; on Windows runners `chmod +x`
+          # is a no-op against the filesystem, only `git update-index` writes
+          # mode 100755 into the index (ticket #9).
+          if [ -f bin/vdesktop.exe ]; then
+            git update-index --chmod=+x bin/vdesktop.exe
+          fi
           git commit -m "release: v${{ inputs.version }}"
           git push origin release --force
 
