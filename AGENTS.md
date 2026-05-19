@@ -22,7 +22,8 @@ tests/                          # pytest, runs on every push (test.yml)
 scripts/build.ps1               # PyInstaller wrapper + smoke test + optional packaging
 vdesktop.spec                   # PyInstaller config
 pyproject.toml                  # setuptools (package-dir = src/) + pytest config
-.claude-plugin/plugin.json      # plugin manifest, points at bin/vdesktop.exe
+.claude-plugin/plugin.json      # plugin manifest (name, version, description)
+.mcp.json                       # MCP server config, auto-discovered at plugin root
 
 .github/workflows/
   test.yml                      # pytest on every push and PR
