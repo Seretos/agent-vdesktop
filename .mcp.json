@@ -1,11 +1,8 @@
 {
   "mcpServers": {
     "vdesktop": {
-      "command": "${CLAUDE_PLUGIN_ROOT}/bin/vdesktop.exe",
-      "args": [],
-      "env": {
-        "VDESKTOP_PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}"
-      }
+      "command": "bin/vdesktop.exe",
+      "args": []
     }
   }
 }
