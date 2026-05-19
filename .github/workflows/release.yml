@@ -58,7 +58,7 @@ jobs:
           cache: "pip"
           cache-dependency-path: pyproject.toml
 
-      - name: Stamp version into pyproject.toml + plugin.json
+      - name: Stamp version into pyproject.toml + plugin manifests
         shell: pwsh
         run: |
           $v = "${{ inputs.version }}"
@@ -71,13 +71,15 @@ jobs:
           )
           Set-Content -Path "pyproject.toml" -Value $pyproject -NoNewline -Encoding UTF8
 
-          $manifest = Get-Content ".claude-plugin/plugin.json" -Raw
-          $manifest = [regex]::Replace(
-            $manifest,
-            '("version"\s*:\s*")[^"]*(")',
-            "`${1}$v`${2}"
-          )
-          Set-Content -Path ".claude-plugin/plugin.json" -Value $manifest -NoNewline -Encoding UTF8
+          foreach ($manifestPath in @(".claude-plugin/plugin.json", ".codex-plugin/plugin.json")) {
+            $manifest = Get-Content $manifestPath -Raw
+            $manifest = [regex]::Replace(
+              $manifest,
+              '("version"\s*:\s*")[^"]*(")',
+              "`${1}$v`${2}"
+            )
+            Set-Content -Path $manifestPath -Value $manifest -NoNewline -Encoding UTF8
+          }
 
           Write-Host "Stamped version $v"
 
