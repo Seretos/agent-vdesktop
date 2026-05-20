@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "vdesktop": {
-      "command": "bin/vdesktop.exe",
-      "args": []
-    }
-  }
-}
