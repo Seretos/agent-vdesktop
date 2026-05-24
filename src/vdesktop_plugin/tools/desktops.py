@@ -60,14 +60,23 @@ def register(mcp) -> None:
 
     @mcp.tool()
     def pin_app_all_desktops(handle_id: str) -> dict:
-        """Pin the application (every window of its app-user-model-ID) to all
-        desktops, not just one window. Use `pin_window_all_desktops` for a
-        single-window pin."""
+        """Pin the application (every window of its AppUserModelID) to all desktops.
+
+        WARNING: this operation is app-wide. Windows resolves the AppUserModelID
+        from the supplied handle and pins *every* open window of that application,
+        not only the one referenced. Unrelated windows of the same app will become
+        visible on all desktops. Use `pin_window_all_desktops` when you intend to
+        pin a single window only."""
         return MANAGER.pin_app_all_desktops(handle_id)
 
     @mcp.tool()
     def unpin_app(handle_id: str) -> dict:
-        """Unpin the application of the given window."""
+        """Unpin the application of the given window from all desktops.
+
+        WARNING: this operation is app-wide. Windows resolves the AppUserModelID
+        from the supplied handle and unpins *every* open window of that application,
+        not only the one referenced. Unrelated windows of the same app will lose
+        their cross-desktop visibility."""
         return MANAGER.unpin_app(handle_id)
 
     @mcp.tool()

@@ -25,8 +25,12 @@ def register(mcp) -> None:
           tabs=[{"shell": "wsl", "wsl_distro": "Ubuntu", "cwd": "/home/test"}]
           tabs=[{"shell": "powershell", "cwd": "E:\\\\development", "command": "claude"}]
 
-        A unique --title tag is injected so we can reliably resolve the new
-        window (wt.exe forwards to a singleton; the spawn PID exits).
+        A unique ``--title vdesktop-term-<hash>`` tag is injected so the new
+        window can be reliably resolved (wt.exe forwards to a singleton; the
+        spawn PID exits immediately). This title persists as the permanent OS
+        window title after launch — it is what the OS and `find_window_by_title`
+        will see. Do NOT rely on a human-friendly title to locate this terminal
+        after launch; use the ``handle_id`` returned by this call instead.
 
         Security:
           The ``command`` field is executed by the chosen shell (powershell.exe,
