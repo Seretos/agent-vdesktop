@@ -10,10 +10,13 @@ requires-python = ">=3.11"
 authors = [{ name = "Arne von Appen" }]
 dependencies = [
   "mcp>=1.2",
-  "pyvda>=0.4",
-  "pywin32>=306; sys_platform == 'win32'",
-  "comtypes>=1.4; sys_platform == 'win32'",
-  "uiautomation>=2.0; sys_platform == 'win32'",
+  # The vdesktop automation engine. Pinned to an EXACT tag for deterministic
+  # builds — bumps land via the dependency-update ticket that
+  # lib-python-vdesktop's release pipeline files here (see AGENTS.md). pyvda /
+  # pywin32 / comtypes / uiautomation come transitively from the lib; they are
+  # deliberately not re-declared so the plugin only ever talks to Windows
+  # through the lib's VDesktopManager surface.
+  "lib-python-vdesktop @ git+https://github.com/Seretos/lib-python-vdesktop@v0.1.0",
 ]
 
 [project.optional-dependencies]

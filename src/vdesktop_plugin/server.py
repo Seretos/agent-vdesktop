@@ -41,11 +41,11 @@ def main() -> None:
 
     _init_com()
 
-    # Import + register all tool modules. Order is meaningful only insofar as
-    # later modules can call helpers from earlier ones (no circular wiring).
-    from . import adoption, desktops, layouts, query
-    from . import windows as window_ops
-    from .launchers import register as register_launchers
+    # Import + register all tool modules. Each wraps the lib_python_vdesktop
+    # VDesktopManager surface as FastMCP tools (the engine lives in the lib).
+    from .tools import adoption, desktops, layouts, query
+    from .tools import windows as window_ops
+    from .tools.launchers import register as register_launchers
 
     desktops.register(mcp)
     layouts.register(mcp)

@@ -48,6 +48,11 @@ extra_hidden = [
     "starlette",
 ]
 extra_hidden += collect_submodules("vdesktop_plugin")
+# The automation engine now lives in lib_python_vdesktop (pulled via the
+# git-pinned dependency). Bundle the whole package incl. its launchers
+# subpackage — a plain import of the thin plugin wouldn't drag in modules
+# that are only reached lazily (e.g. launchers, query's uiautomation path).
+extra_hidden += collect_submodules("lib_python_vdesktop")
 extra_hidden += collect_submodules("comtypes")  # interface enumerators
 
 a = Analysis(

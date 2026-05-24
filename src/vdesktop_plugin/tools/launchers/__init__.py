@@ -1,6 +1,5 @@
-"""App launchers — each registers an MCP tool that spawns a process,
-resolves its HWND, optionally moves it to a target desktop and slot, then
-registers it in the tracking registry."""
+"""App-launcher MCP tools — each registers a tool that delegates to
+lib_python_vdesktop.VDesktopManager's launch_* methods."""
 from __future__ import annotations
 
 
