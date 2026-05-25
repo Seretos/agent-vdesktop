@@ -84,6 +84,13 @@ merge between them. All real edits go to `main`.
 - `dispatch.yml` is a manual recovery tool (re-send the marketplace dispatch) — don't give it
   automatic triggers.
 
+## Error contracts
+
+Tools in this repo raise exceptions (which FastMCP surfaces as tool errors)
+rather than returning `{"error": "..."}` dicts. This intentionally diverges
+from sibling MCP servers for simplicity — callers should treat a tool error
+response as a failure, not inspect a dict key.
+
 ## Cross-repo contract
 
 The marketplace dispatch payload format is defined in `agent-marketplace/AGENTS.md`; the dispatch
