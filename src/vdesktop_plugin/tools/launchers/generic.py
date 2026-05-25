@@ -19,6 +19,11 @@ def register(mcp) -> None:
     ) -> dict:
         """Launch an arbitrary executable and adopt the resulting window.
 
+        Warning: singleton/handoff apps (Notepad, Calculator, UWP Store apps,
+        browsers) may activate and relocate a pre-existing instance to the
+        current desktop as a side-effect, even when the tool subsequently
+        errors on HWND resolution.
+
         Args:
             executable: Path to the .exe (POSIX paths are translated).
             args: Additional command-line arguments.
@@ -33,6 +38,8 @@ def register(mcp) -> None:
                 immediately hand off to an existing instance when launched, so
                 the spawned PID exits and PID-based resolution fails for them.
                 For these apps ``title_contains`` identification is required.
+                If the tool errors, the relocated window can be recovered via
+                ``list_windows`` or ``find_window_by_title``.
         """
         return MANAGER.launch_app(
             executable, args, cwd, slot, desktop, label, identification

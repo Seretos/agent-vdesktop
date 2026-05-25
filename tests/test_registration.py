@@ -107,3 +107,19 @@ def test_adopt_window_app_type_hint_is_literal():
     assert literal_values == expected_values, (
         f"Literal args {literal_values!r} != expected {expected_values!r}"
     )
+
+
+def test_launch_app_singleton_side_effect_warning():
+    """Regression #23: launch_app docstring must warn that singleton apps can
+    activate and relocate a pre-existing instance as a side-effect."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["launch_app"].__doc__
+
+    # Top-level warning: relocation side-effect mentioned
+    assert "relocat" in doc.lower(), (
+        "launch_app docstring missing top-level singleton relocation warning"
+    )
+    # Identification arg block: recovery guidance present
+    assert "list_windows" in doc or "find_window_by_title" in doc, (
+        "launch_app docstring missing recovery guidance in identification block"
+    )
