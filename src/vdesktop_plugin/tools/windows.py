@@ -15,11 +15,20 @@ def register(mcp) -> None:
     ) -> list[dict]:
         """List tracked windows (and optionally unmanaged top-level windows).
 
-        Filters by desktop GUID if `desktop` is given. Each entry includes
-        handle_id, label, app_type, title, hwnd, pid, desktop_guid, slot_id,
-        bounds, is_pinned, and is_app_pinned. Pin fields are None when pyvda
-        is unavailable. A pinned window is visible on every desktop, even
-        though desktop_guid still reports its owning desktop.
+        Filters by desktop GUID if `desktop` is given.
+
+        Managed row shape (every tracked window):
+          handle_id, label, app_type, title, hwnd, pid, desktop_guid,
+          slot_id, bounds, state, is_pinned, is_app_pinned.
+          Pin fields are None when pyvda is unavailable. A pinned window is
+          visible on every desktop, even though desktop_guid still reports
+          its owning desktop.
+
+        Unmanaged row shape (present only when include_unmanaged=True):
+          Keys present: hwnd, pid, title, class_name, app_type,
+          desktop_guid, and bounds.
+          The tracked-window fields handle_id, label, slot_id, state,
+          is_pinned, and is_app_pinned are absent from unmanaged rows.
         """
         return MANAGER.list_windows(desktop, include_unmanaged)
 

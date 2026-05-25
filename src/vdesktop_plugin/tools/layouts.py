@@ -37,7 +37,16 @@ def register(mcp) -> None:
            "regions": [{"id": "main", "x_pct": 0, "y_pct": 0,
                         "w_pct": 70, "h_pct": 100}, ...]}
 
-        Use list_layout_presets() to see the available preset names."""
+        Use list_layout_presets() to see the available preset names.
+
+        Slot naming: preset layouts yield human-readable named slot ids
+        derived from the preset definition (e.g. "left", "center", "right").
+        Positional layout types use generated positional names:
+          columns → col-0, col-1, col-2, …
+          rows    → row-0, row-1, …
+          grid    → r0c0, r0c1, r1c0, r1c1, … (compact rRcC format)
+        regions use the "id" value supplied in each region dict.
+        """
         return MANAGER.compute_layout(spec)
 
     @mcp.tool()
@@ -54,6 +63,14 @@ def register(mcp) -> None:
           {"type": "columns", "splits": [25, 50, 25],  "monitor": 0}
           {"type": "grid",    "cols": 2, "rows": 2,    "monitor": 0}
           ...or a list of such dicts for multi-monitor layouts.
+
+        Slot naming: preset layouts yield human-readable named slot ids
+        derived from the preset definition (e.g. "left", "center", "right").
+        Positional layout types use generated positional names:
+          columns → col-0, col-1, col-2, …
+          rows    → row-0, row-1, …
+          grid    → r0c0, r0c1, r1c0, r1c1, … (compact rRcC format)
+        regions use the "id" value supplied in each region dict.
 
         This does NOT move any existing windows — call move_window or launch_*
         to fill the slots.

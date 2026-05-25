@@ -24,7 +24,15 @@ def register(mcp) -> None:
     @mcp.tool()
     def create_desktop(name: Optional[str] = None) -> dict:
         """Create a new virtual desktop and return its info. If `name` is given,
-        the desktop is renamed immediately (Windows 11)."""
+        the desktop is renamed immediately (Windows 11).
+
+        Index stability: the returned index is 0-based (Windows displays desktops
+        as "Desktop 1", "Desktop 2", etc., which is 1-based). Both indices and
+        auto-generated names shift after any delete or reorder and must not be
+        used as stable references across operations. Use the "guid" field in
+        the returned dict as the stable identifier when addressing a desktop
+        programmatically.
+        """
         return MANAGER.create_desktop(name)
 
     @mcp.tool()
@@ -33,7 +41,16 @@ def register(mcp) -> None:
         fallback_desktop: Optional[DesktopRef] = None,
     ) -> dict:
         """Delete a virtual desktop. Windows moves its windows to `fallback_desktop`
-        (or to the desktop on the left by default)."""
+        (or to the desktop on the left by default).
+
+        Index stability: desktop indices are 0-based (Windows displays desktops
+        as "Desktop 1", "Desktop 2", etc., which is 1-based). Both indices and
+        auto-generated names shift after any delete or reorder and must not be
+        used as stable references across operations. The response contains
+        "deleted_guid" (the GUID of the removed desktop) and "remaining" (a
+        list of surviving desktop dicts, each with a "guid" field). Use "guid"
+        as the stable identifier when addressing desktops programmatically.
+        """
         return MANAGER.delete_desktop(target, fallback_desktop)
 
     @mcp.tool()
