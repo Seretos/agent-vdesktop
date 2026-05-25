@@ -123,3 +123,133 @@ def test_launch_app_singleton_side_effect_warning():
     assert "list_windows" in doc or "find_window_by_title" in doc, (
         "launch_app docstring missing recovery guidance in identification block"
     )
+
+
+def test_list_windows_documents_unmanaged_shape():
+    """Regression #31: list_windows docstring must document the complete unmanaged
+    row shape (hwnd, pid, title, class_name, app_type, desktop_guid, bounds) and
+    name which tracked-window fields are absent from those rows."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["list_windows"].__doc__
+
+    assert "unmanaged" in doc.lower(), (
+        "list_windows docstring missing 'unmanaged' keyword"
+    )
+    # class_name must be listed as a present key
+    assert "class_name" in doc, (
+        "list_windows docstring must list 'class_name' as a key present in unmanaged rows"
+    )
+    # desktop_guid must be listed as PRESENT (not absent) in unmanaged rows
+    assert "desktop_guid" in doc, (
+        "list_windows docstring must mention 'desktop_guid' (present in unmanaged rows)"
+    )
+    assert "absent" in doc.lower() or "omit" in doc.lower(), (
+        "list_windows docstring must state that tracked-window fields are absent "
+        "from unmanaged rows"
+    )
+
+
+def test_compute_layout_documents_slot_naming():
+    """Regression #31: compute_layout docstring must document both named (preset)
+    and positional (columns/rows/grid) slot naming schemes with the correct grid
+    format (compact rRcC, not row-N-col-N)."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["compute_layout"].__doc__
+
+    assert "col-" in doc, (
+        "compute_layout docstring missing positional slot name example (col-)"
+    )
+    assert "preset" in doc.lower(), (
+        "compute_layout docstring missing 'preset' slot naming reference"
+    )
+    assert "named" in doc.lower() or "positional" in doc.lower(), (
+        "compute_layout docstring must contrast named vs positional slot names"
+    )
+    # Correct compact grid notation must be present
+    assert "r0c0" in doc, (
+        "compute_layout docstring must use the correct compact grid slot format 'r0c0'"
+    )
+    # Wrong verbose notation must NOT be present
+    assert "row-0-col-0" not in doc, (
+        "compute_layout docstring must not contain the incorrect 'row-0-col-0' grid format"
+    )
+
+
+def test_apply_layout_documents_slot_naming():
+    """Regression #31: apply_layout docstring must document slot naming directly
+    with the correct grid format (compact rRcC, not row-N-col-N)."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["apply_layout"].__doc__
+
+    assert "col-" in doc, (
+        "apply_layout docstring missing positional slot name example (col-)"
+    )
+    assert "preset" in doc.lower(), (
+        "apply_layout docstring missing 'preset' slot naming reference"
+    )
+    assert "named" in doc.lower() or "positional" in doc.lower(), (
+        "apply_layout docstring must contrast named vs positional slot names"
+    )
+    # Correct compact grid notation must be present
+    assert "r0c0" in doc, (
+        "apply_layout docstring must use the correct compact grid slot format 'r0c0'"
+    )
+    # Wrong verbose notation must NOT be present
+    assert "row-0-col-0" not in doc, (
+        "apply_layout docstring must not contain the incorrect 'row-0-col-0' grid format"
+    )
+
+
+def test_create_desktop_documents_index_stability():
+    """Regression #31: create_desktop docstring must document index instability
+    and reference the correct 'guid' field (not 'desktop_guid')."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["create_desktop"].__doc__
+
+    assert "0-based" in doc, (
+        "create_desktop docstring must mention '0-based' indexing"
+    )
+    assert (
+        "unstable" in doc.lower()
+        or "shift" in doc.lower()
+        or "stable" in doc.lower()
+    ), (
+        "create_desktop docstring must note that indices/names shift and are unstable"
+    )
+    # The correct returned field name is "guid", not "desktop_guid"
+    assert '"guid"' in doc, (
+        "create_desktop docstring must reference the correct field name '\"guid\"'"
+    )
+    assert "desktop_guid" not in doc, (
+        "create_desktop docstring must not use 'desktop_guid' — the actual key is 'guid'"
+    )
+
+
+def test_delete_desktop_documents_index_stability():
+    """Regression #31: delete_desktop docstring must document index instability
+    and reference the correct response keys ('deleted_guid' and 'guid', not 'desktop_guid')."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["delete_desktop"].__doc__
+
+    assert "0-based" in doc, (
+        "delete_desktop docstring must mention '0-based' indexing"
+    )
+    assert (
+        "unstable" in doc.lower()
+        or "shift" in doc.lower()
+        or "stable" in doc.lower()
+    ), (
+        "delete_desktop docstring must note that indices/names shift and are unstable"
+    )
+    # The response uses "deleted_guid" and remaining entries use "guid"
+    assert "deleted_guid" in doc, (
+        "delete_desktop docstring must reference the 'deleted_guid' response field"
+    )
+    assert '"guid"' in doc, (
+        "delete_desktop docstring must reference the 'guid' field in remaining desktop entries"
+    )
+    # Must not use the wrong composite name
+    assert "desktop_guid" not in doc, (
+        "delete_desktop docstring must not use 'desktop_guid' — the actual keys are "
+        "'deleted_guid' and 'guid'"
+    )
