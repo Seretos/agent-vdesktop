@@ -28,8 +28,11 @@ def register(mcp) -> None:
             label: Optional label.
             identification: Optional HWND-resolution hint:
                 {"title_contains": str?, "class_name": str?, "timeout_ms": int}.
-                Use when PID-based lookup is unreliable (e.g. apps that hand
-                off to a singleton process and exit).
+                Use when PID-based lookup is unreliable. Singleton-process apps
+                — Notepad, Explorer, UWP apps, Firefox, and other browsers —
+                immediately hand off to an existing instance when launched, so
+                the spawned PID exits and PID-based resolution fails for them.
+                For these apps ``title_contains`` identification is required.
         """
         return MANAGER.launch_app(
             executable, args, cwd, slot, desktop, label, identification

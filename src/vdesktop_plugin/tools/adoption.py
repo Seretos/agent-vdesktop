@@ -2,7 +2,7 @@
 lib_python_vdesktop.VDesktopManager."""
 from __future__ import annotations
 
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 from ._engine import MANAGER
 
@@ -21,13 +21,14 @@ def register(mcp) -> None:
     def adopt_window(
         hwnd: int,
         label: Optional[str] = None,
-        app_type_hint: Optional[str] = None,
+        app_type_hint: Optional[Literal["chrome", "edge", "vscode", "terminal", "unknown"]] = None,
     ) -> dict:
         """Add an existing HWND to the registry so it can be moved, focused,
         labeled, and tracked like a launched window. Returns the new handle_id.
 
-        `app_type_hint` overrides the auto-classification (chrome / vscode /
-        terminal / unknown) — pass it when you know the window's identity."""
+        `app_type_hint` overrides the auto-classification — pass it when you
+        know the window's identity. Accepted values: ``"chrome"``, ``"edge"``,
+        ``"vscode"``, ``"terminal"``, ``"unknown"``."""
         return MANAGER.adopt_window(hwnd, label, app_type_hint)
 
     @mcp.tool()
