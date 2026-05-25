@@ -54,9 +54,13 @@ def register(mcp) -> None:
         return MANAGER.focus_window(handle_id)
 
     @mcp.tool()
-    def relabel_window(handle_id: str, new_label: Optional[str]) -> dict:
-        """Change (or clear) a tracked window's label."""
-        return MANAGER.relabel_window(handle_id, new_label)
+    def relabel_window(handle_id: str, new_label: str) -> dict:
+        """Change (or clear) a tracked window's label.
+
+        Pass an empty string ``""`` to clear the label. Any non-empty string —
+        including the literal ``"null"`` — is stored verbatim as the new label.
+        """
+        return MANAGER.relabel_window(handle_id, new_label or None)
 
     @mcp.tool()
     def minimize_window(handle_id: str) -> dict:
