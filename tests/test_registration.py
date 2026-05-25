@@ -11,16 +11,22 @@ production CI runner.
 """
 from __future__ import annotations
 
+import typing
+
 
 class FakeMCP:
-    """Captures tool names the way FastMCP's @mcp.tool() decorator would."""
+    """Captures tool names and function references the way FastMCP's
+    @mcp.tool() decorator would."""
 
     def __init__(self) -> None:
         self.tool_names: list[str] = []
+        self.tool_fns: dict[str, object] = {}
 
     def tool(self, name: str | None = None):
         def deco(fn):
-            self.tool_names.append(name or fn.__name__)
+            tool_name = name or fn.__name__
+            self.tool_names.append(tool_name)
+            self.tool_fns[tool_name] = fn
             return fn
 
         return deco
@@ -69,3 +75,35 @@ def test_full_tool_surface_registers():
 def test_no_duplicate_tool_registrations():
     mcp = _register_all()
     assert len(mcp.tool_names) == len(set(mcp.tool_names))
+
+
+def test_adopt_window_app_type_hint_is_literal():
+    """Regression: app_type_hint must be Optional[Literal[...]] with exactly
+    the five classifier values, not a plain Optional[str]."""
+    mcp = _register_all()
+    fn = mcp.tool_fns["adopt_window"]
+
+    # get_type_hints resolves forward refs; include extras so Literal resolves.
+    hints = typing.get_type_hints(fn, include_extras=True)
+    annotation = hints["app_type_hint"]
+
+    # Must be Optional[...], i.e. Union[..., None]
+    outer_args = typing.get_args(annotation)
+    assert type(None) in outer_args, (
+        f"app_type_hint annotation {annotation!r} is not Optional (no NoneType)"
+    )
+
+    # Find the Literal inside the Optional union
+    literal_type = next(
+        (a for a in outer_args if typing.get_origin(a) is typing.Literal),
+        None,
+    )
+    assert literal_type is not None, (
+        f"app_type_hint annotation {annotation!r} contains no Literal type"
+    )
+
+    literal_values = set(typing.get_args(literal_type))
+    expected_values = {"chrome", "edge", "vscode", "terminal", "unknown"}
+    assert literal_values == expected_values, (
+        f"Literal args {literal_values!r} != expected {expected_values!r}"
+    )
