@@ -181,6 +181,9 @@ if ($Package) {
         Copy-Item -Recurse -Force "skills" $stage
     }
     Copy-Item -Force "README.md", "LICENSE" $stage -ErrorAction SilentlyContinue
+    if (Test-Path "assets") {
+        Copy-Item -Recurse -Force "assets" $stage
+    }
     Compress-Archive -Path "$stage\*" -DestinationPath $zipPath -Force
     $zipSize = [math]::Round((Get-Item $zipPath).Length / 1MB, 1)
     Write-Host "    dist/$zipName (${zipSize} MB)"

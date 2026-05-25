@@ -1,3 +1,5 @@
+<img src="assets/icon.png" alt="agent-vdesktop icon" width="96" />
+
 # agent-vdesktop
 
 Let your AI coding agent control **Microsoft Virtual Desktops on Windows 11**: create and switch desktops, apply column / grid / multi-monitor layouts, launch Chrome / Windows Terminal / VS Code into specific layout slots, pin apps across desktops, and address windows by label or content.
