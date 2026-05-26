@@ -55,12 +55,39 @@ def register(mcp) -> None:
 
     @mcp.tool()
     def switch_to_desktop(target: DesktopRef) -> dict:
-        """Switch the foreground to the given desktop."""
+        """Switch the foreground to the given desktop.
+
+        Args:
+            target: Identifies the desktop to switch to. Accepted forms:
+                - **index** (int): 0-based integer position (e.g. ``0`` for
+                  the first desktop).
+                - **name** (str): exact desktop name, whitespace-stripped
+                  (e.g. ``"Work"``).
+                - **GUID** (str): bare UUID string without extra quotes
+                  (e.g. ``"3f7b2e1a-..."``) — a double-quoted GUID will
+                  fail to resolve. Prefer GUID over index or name as the
+                  stable identifier, because indices and auto-generated names
+                  shift after any delete or reorder.
+        """
         return MANAGER.switch_to_desktop(target)
 
     @mcp.tool()
     def rename_desktop(target: DesktopRef, new_name: str) -> dict:
-        """Rename a virtual desktop. Windows 11 only."""
+        """Rename a virtual desktop. Windows 11 only.
+
+        Args:
+            target: Identifies the desktop to rename. Accepted forms:
+                - **index** (int): 0-based integer position (e.g. ``0`` for
+                  the first desktop).
+                - **name** (str): exact desktop name, whitespace-stripped
+                  (e.g. ``"Work"``).
+                - **GUID** (str): bare UUID string without extra quotes
+                  (e.g. ``"3f7b2e1a-..."``) — a double-quoted GUID will
+                  fail to resolve. Prefer GUID over index or name as the
+                  stable identifier, because indices and auto-generated names
+                  shift after any delete or reorder.
+            new_name: The new name to assign to the desktop.
+        """
         return MANAGER.rename_desktop(target, new_name)
 
     # -- Pinning (cross-desktop visibility) ---------------------------------
@@ -98,5 +125,19 @@ def register(mcp) -> None:
 
     @mcp.tool()
     def is_pinned(handle_id: str) -> dict:
-        """Return both the window-pinned and app-pinned state for a tracked window."""
+        """Return both the window-pinned and app-pinned state for a tracked window.
+
+        This tool requires a handle_id, which only exists for windows that are
+        already in the tracking registry. Windows returned by
+        ``find_window_by_title`` and unmanaged rows from ``list_windows`` carry
+        an ``hwnd`` (OS integer) but no handle_id, so they cannot be passed here
+        directly.
+
+        If the window is already tracked, ``list_windows()`` already includes
+        ``is_pinned`` and ``is_app_pinned`` on every tracked row — no separate
+        ``is_pinned`` call is needed in that case.
+
+        For an untracked window, call ``adopt_window(hwnd)`` first to register
+        it and obtain a handle_id, then pass that handle_id here.
+        """
         return MANAGER.is_pinned(handle_id)
