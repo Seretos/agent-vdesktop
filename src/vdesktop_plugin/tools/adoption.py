@@ -39,7 +39,9 @@ def register(mcp) -> None:
         `app_type_hint` overrides the auto-classification — pass it when you
         know the window's identity. Accepted values: ``"chrome"``, ``"edge"``,
         ``"vscode"``, ``"terminal"``, ``"unknown"``."""
-        return MANAGER.adopt_window(hwnd, label, app_type_hint)
+        result = MANAGER.adopt_window(hwnd, label, app_type_hint)
+        result.setdefault("slot_id", None)
+        return result
 
     @mcp.tool()
     def release_window(handle_id: str) -> dict:

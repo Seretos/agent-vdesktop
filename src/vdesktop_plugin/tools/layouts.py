@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Optional, Union
 
 from lib_python_vdesktop import LayoutSpec
+from lib_python_vdesktop.layouts import PRESETS
 
 from ._engine import MANAGER
 
@@ -13,13 +14,34 @@ def register(mcp) -> None:
     @mcp.tool(name="list_monitors")
     def _list_monitors() -> list[dict]:
         """List all physical monitors with their bounds, work area, DPI, and primary flag.
-        Indices are 0-based; the primary monitor is always index 0."""
+
+        Each entry contains:
+          - ``index``: 0-based integer. The primary monitor is always index 0.
+            Use this value in layout specs (e.g. ``{"type": "preset", "monitor": 0}``).
+          - ``name``: raw Win32 device path (e.g. ``\\\\.\\DISPLAY1``). This is an
+            opaque OS identifier, not intended for display to users.
+          - ``bounds``, ``work_area``, ``dpi``, ``primary``: geometry and display info.
+        """
         return MANAGER.list_monitors()
 
     @mcp.tool()
     def list_layout_presets() -> list[dict]:
-        """List built-in layout preset names with a short description."""
-        return MANAGER.list_layout_presets()
+        """List built-in layout preset names with a short description and slot ids.
+
+        Each entry contains:
+          - ``name``: the preset name to pass to apply_layout / compute_layout.
+          - ``description``: a human-readable summary of the layout.
+          - ``slots``: list of slot_id strings available in this preset. These are
+            the values you can pass as ``"slot"`` in move_window or launch_*.
+        """
+        presets = MANAGER.list_layout_presets()
+        for preset in presets:
+            name = preset.get("name", "")
+            if name in PRESETS:
+                preset["slots"] = [s["slot_id"] for s in PRESETS[name]()]
+            else:
+                preset["slots"] = []
+        return presets
 
     @mcp.tool()
     def compute_layout(spec: LayoutSpec) -> list[dict]:

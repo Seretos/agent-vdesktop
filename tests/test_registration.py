@@ -493,3 +493,277 @@ def test_find_window_by_title_docstring_distinguishes_hwnd_from_handle_id():
         "find_window_by_title docstring must reference 'adopt_window' for "
         "obtaining a handle_id"
     )
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for ticket #40 — return shape / error message polish
+# ---------------------------------------------------------------------------
+
+def test_move_window_slot_error_mentions_available_slots():
+    """Regression #40: move_window wraps KeyError from lib into ValueError with
+    a message that references slots and lists guidance tools."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["move_window"]
+
+    mock_manager = MagicMock()
+    mock_manager.move_window.side_effect = KeyError("Slot 'bad' unknown — apply_layout first")
+
+    with patch("vdesktop_plugin.tools.windows.MANAGER", mock_manager):
+        try:
+            fn(handle_id="h1", target={"slot": "bad"})
+            assert False, "Expected ValueError to be raised"
+        except ValueError as exc:
+            msg = str(exc)
+            assert "slot" in msg.lower(), f"Error message must mention 'slot': {msg!r}"
+            assert "apply_layout" in msg or "list_layout_presets" in msg, (
+                f"Error message must mention apply_layout or list_layout_presets: {msg!r}"
+            )
+
+
+def test_move_window_untracked_handle_keyerror_propagates_unchanged():
+    """Regression #40 fix: a KeyError raised by REGISTRY.require (untracked handle_id)
+    must NOT be converted to ValueError even when target contains 'slot'.
+    The guard must inspect the exception message, not only the target dict."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["move_window"]
+
+    mock_manager = MagicMock()
+    mock_manager.move_window.side_effect = KeyError("No tracked window for handle/label 'h-bad'")
+
+    with patch("vdesktop_plugin.tools.windows.MANAGER", mock_manager):
+        try:
+            fn(handle_id="h-bad", target={"slot": "x"})
+            assert False, "Expected KeyError to be raised"
+        except KeyError:
+            pass  # correct — original KeyError must propagate unchanged
+        except ValueError as exc:
+            assert False, (
+                f"untracked-handle KeyError must not be converted to ValueError: {exc}"
+            )
+
+
+def test_switch_to_desktop_unknown_name_error_mentions_count():
+    """Regression #40: switch_to_desktop enriches 'Unknown desktop reference'
+    error with the desktop count."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["switch_to_desktop"]
+
+    mock_manager = MagicMock()
+    mock_manager.switch_to_desktop.side_effect = ValueError("Unknown desktop reference: 'foo'")
+    mock_manager.list_desktops.return_value = [{"guid": "a"}, {"guid": "b"}, {"guid": "c"}]
+
+    with patch("vdesktop_plugin.tools.desktops.MANAGER", mock_manager):
+        try:
+            fn(target="foo")
+            assert False, "Expected ValueError to be raised"
+        except ValueError as exc:
+            msg = str(exc)
+            assert "3" in msg, f"Error message must mention count '3': {msg!r}"
+
+
+def test_delete_desktop_docstring_documents_last_desktop_guard():
+    """Regression #40: delete_desktop docstring must mention last/only desktop
+    behaviour."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["delete_desktop"].__doc__
+
+    assert "last" in doc.lower() or "only" in doc.lower(), (
+        "delete_desktop docstring must mention 'last' or 'only' desktop guard"
+    )
+
+
+def test_delete_desktop_docstring_documents_target_forms():
+    """Regression #40: delete_desktop docstring must document index, name, and
+    GUID forms for the target parameter."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["delete_desktop"].__doc__
+
+    assert "index" in doc.lower(), (
+        "delete_desktop docstring must document 'index' as a target form"
+    )
+    assert "name" in doc.lower(), (
+        "delete_desktop docstring must document 'name' as a target form"
+    )
+    assert "guid" in doc.lower(), (
+        "delete_desktop docstring must document 'guid' as a target form"
+    )
+
+
+def test_adopt_window_return_includes_slot_id():
+    """Regression #40: adopt_window result (fresh adoption) must include slot_id=None."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["adopt_window"]
+
+    mock_manager = MagicMock()
+    mock_manager.adopt_window.return_value = {
+        "handle_id": "h1",
+        "hwnd": 1,
+        "pid": 123,
+        "label": None,
+        "app_type": "unknown",
+        "desktop_guid": "guid-1",
+        "bounds": {"x": 0, "y": 0, "w": 100, "h": 100},
+        "title": "Test Window",
+    }
+
+    with patch("vdesktop_plugin.tools.adoption.MANAGER", mock_manager):
+        result = fn(hwnd=1)
+
+    assert "slot_id" in result, "adopt_window result must include 'slot_id' key"
+    assert result["slot_id"] is None, (
+        f"adopt_window fresh adoption result must have slot_id=None, got {result['slot_id']!r}"
+    )
+
+
+def test_adopt_window_already_tracked_return_includes_slot_id():
+    """Regression #40: adopt_window result (already-tracked path) must include slot_id=None."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["adopt_window"]
+
+    mock_manager = MagicMock()
+    mock_manager.adopt_window.return_value = {
+        "handle_id": "h1",
+        "already_tracked": True,
+    }
+
+    with patch("vdesktop_plugin.tools.adoption.MANAGER", mock_manager):
+        result = fn(hwnd=1)
+
+    assert "slot_id" in result, "adopt_window already-tracked result must include 'slot_id' key"
+    assert result["slot_id"] is None, (
+        f"adopt_window already-tracked result must have slot_id=None, got {result['slot_id']!r}"
+    )
+
+
+def test_pin_window_all_desktops_return_includes_already_pinned_false():
+    """Regression #40: pin_window_all_desktops returns already_pinned=False when
+    the window was not pinned before the call."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["pin_window_all_desktops"]
+
+    mock_manager = MagicMock()
+    mock_manager.is_pinned.return_value = {
+        "handle_id": "h1",
+        "window_pinned": False,
+        "app_pinned": False,
+    }
+    mock_manager.pin_window_all_desktops.return_value = {
+        "handle_id": "h1",
+        "window_pinned": True,
+    }
+
+    with patch("vdesktop_plugin.tools.desktops.MANAGER", mock_manager):
+        result = fn(handle_id="h1")
+
+    assert "already_pinned" in result, (
+        "pin_window_all_desktops result must include 'already_pinned' key"
+    )
+    assert result["already_pinned"] is False, (
+        f"already_pinned must be False when window was not pinned: {result['already_pinned']!r}"
+    )
+
+
+def test_pin_window_all_desktops_return_includes_already_pinned_true():
+    """Regression #40: pin_window_all_desktops returns already_pinned=True when
+    the window was already pinned before the call."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["pin_window_all_desktops"]
+
+    mock_manager = MagicMock()
+    mock_manager.is_pinned.return_value = {
+        "handle_id": "h1",
+        "window_pinned": True,
+        "app_pinned": False,
+    }
+    mock_manager.pin_window_all_desktops.return_value = {
+        "handle_id": "h1",
+        "window_pinned": True,
+    }
+
+    with patch("vdesktop_plugin.tools.desktops.MANAGER", mock_manager):
+        result = fn(handle_id="h1")
+
+    assert "already_pinned" in result, (
+        "pin_window_all_desktops result must include 'already_pinned' key"
+    )
+    assert result["already_pinned"] is True, (
+        f"already_pinned must be True when window was already pinned: {result['already_pinned']!r}"
+    )
+
+
+def test_list_layout_presets_includes_slots():
+    """Regression #40: list_layout_presets must include a non-empty 'slots' list
+    for each preset."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["list_layout_presets"]
+
+    mock_manager = MagicMock()
+    mock_manager.list_layout_presets.return_value = [
+        {"name": "two-columns", "description": "50/50 vertical split"},
+        {"name": "three-columns", "description": "33/33/33 vertical split"},
+        {"name": "fullscreen", "description": "single window covers the entire work area"},
+    ]
+
+    with patch("vdesktop_plugin.tools.layouts.MANAGER", mock_manager):
+        result = fn()
+
+    for preset in result:
+        assert "slots" in preset, (
+            f"list_layout_presets result for {preset.get('name')!r} must include 'slots' key"
+        )
+        assert len(preset["slots"]) > 0, (
+            f"list_layout_presets slots for {preset.get('name')!r} must be non-empty"
+        )
+
+
+def test_list_monitors_docstring_names_win32_path():
+    """Regression #40: list_monitors docstring must reference the Win32 device
+    path nature of 'name' and mention 'index'."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["list_monitors"].__doc__
+
+    assert "index" in doc.lower(), (
+        "list_monitors docstring must mention 'index'"
+    )
+    # Must reference the Win32 / device-path nature of 'name'
+    assert "win32" in doc.lower() or "device" in doc.lower() or "DISPLAY" in doc, (
+        "list_monitors docstring must describe 'name' as a Win32 device path"
+    )
+
+
+def test_move_window_docstring_notes_bounds_overlap_with_resize_window():
+    """Regression #40: move_window docstring must reference resize_window to
+    explain the bounds overlap."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["move_window"].__doc__
+
+    assert "resize_window" in doc, (
+        "move_window docstring must mention 'resize_window'"
+    )
+
+
+def test_resize_window_docstring_notes_overlap_with_move_window():
+    """Regression #40: resize_window docstring must reference move_window to
+    explain the overlap."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["resize_window"].__doc__
+
+    assert "move_window" in doc, (
+        "resize_window docstring must mention 'move_window'"
+    )
