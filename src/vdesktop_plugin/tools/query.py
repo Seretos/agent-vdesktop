@@ -37,7 +37,13 @@ def register(mcp) -> None:
         pattern: str,
         regex: bool = False,
     ) -> list[dict]:
-        """Search the tab strips of *all* Chrome windows for a tab whose title
+        """**WRITE SIDE-EFFECT**: This tool unconditionally ADOPTS the matched
+        Chrome window into the tracking registry on every call. Adoption is a
+        persistent write operation — the window remains tracked until you
+        explicitly call ``release_window``. Call ``list_windows`` to see
+        currently-tracked windows.
+
+        Search the tab strips of *all* Chrome windows for a tab whose title
         contains (or matches as regex) `pattern`. Uses UI Automation (UIA).
 
         Coverage depends on Chrome's accessibility tree, which is OFF by
@@ -63,10 +69,15 @@ def register(mcp) -> None:
              call again.
 
         Returns:
-            List of {handle_id, hwnd, tab_index, tab_title, window_title}.
-            ``tab_index = -1`` means the match came from the window title
-            (active tab fallback) rather than UIA enumeration. Adopts the
-            matching Chrome window into the registry if it wasn't tracked
-            yet (so the returned handle_id is immediately usable).
+            List of {handle_id, hwnd, tab_index, tab_title, window_title,
+            adopted}. ``tab_index = -1`` means the match came from the window
+            title (active tab fallback) rather than UIA enumeration.
+            ``adopted`` is ``True`` when THIS call added the window to the
+            tracking registry; ``False`` when the window was already tracked
+            before this call.
         """
-        return MANAGER.find_chrome_tab(pattern, regex)
+        pre_tracked = {w["hwnd"] for w in MANAGER.list_windows()}
+        results = MANAGER.find_chrome_tab(pattern, regex)
+        for result in results:
+            result["adopted"] = result["hwnd"] not in pre_tracked
+        return results
