@@ -21,21 +21,37 @@ def register(mcp) -> None:
 
         Filters by desktop GUID if `desktop` is given.
 
-        Managed row shape (every tracked window):
-          handle_id, label, app_type, title, hwnd, pid, desktop_guid,
-          slot_id, bounds, state, is_pinned, is_app_pinned.
+        Every row contains a boolean discriminator key `tracked`:
+          - tracked=True  — the window is in the tracking registry.
+          - tracked=False — the window is unmanaged (visible on this desktop
+            but not tracked by the registry).
+
+        Fields present on ALL rows:
+          hwnd, pid, title, app_type, desktop_guid, bounds.
+
+        Additional fields present only when tracked=True:
+          handle_id, label, slot_id, state, is_pinned, is_app_pinned.
           Pin fields are None when pyvda is unavailable. A pinned window is
           visible on every desktop, even though desktop_guid still reports
           its owning desktop.
+          pid is null for tracked windows when the PID is unknown (Win32
+          returns 0 for the PID in some cases; this wrapper normalises that
+          to null rather than returning the misleading value 0).
 
-        Unmanaged row shape (present when include_unmanaged=True, which is the
-        default):
-          Keys present: hwnd, pid, title, class_name, app_type,
-          desktop_guid, and bounds.
+        Fields present only when tracked=False (i.e. unmanaged rows):
+          class_name.
           The tracked-window fields handle_id, label, slot_id, state,
           is_pinned, and is_app_pinned are absent from unmanaged rows.
         """
-        return MANAGER.list_windows(desktop, include_unmanaged)
+        rows = MANAGER.list_windows(desktop, include_unmanaged)
+        for row in rows:
+            if "handle_id" in row:
+                row["tracked"] = True
+                if row.get("pid") == 0:
+                    row["pid"] = None
+            else:
+                row["tracked"] = False
+        return rows
 
     @mcp.tool()
     def move_window(handle_id: str, target: dict) -> dict:
