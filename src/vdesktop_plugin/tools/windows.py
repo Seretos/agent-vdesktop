@@ -63,13 +63,35 @@ def register(mcp) -> None:
           - "bounds": explicit {x, y, w, h}.
           - "desktop": move the window to a different desktop (int index, name,
             or GUID).
+
+        Using ``{"bounds": {x, y, w, h}}`` is equivalent to calling
+        ``resize_window`` — it moves AND resizes the window to the given pixel
+        bounds. ``resize_window`` is the canonical single-purpose tool when you
+        only need to set exact pixel bounds; use ``move_window`` when you also
+        need to address a slot or change the desktop in the same call.
         """
-        return MANAGER.move_window(handle_id, target)
+        try:
+            return MANAGER.move_window(handle_id, target)
+        except KeyError as exc:
+            if "slot" in target and "slot" in str(exc).lower():
+                slot = target["slot"]
+                raise ValueError(
+                    f"Slot {slot!r} is not a known slot id in the active layout. "
+                    "Call list_layout_presets() or apply_layout() to see available "
+                    "slot ids."
+                ) from exc
+            raise
 
     @mcp.tool()
     def resize_window(handle_id: str, bounds: dict) -> dict:
         """Resize/reposition a tracked window to the given visible bounds
-        (DWM shadows compensated)."""
+        (DWM shadows compensated).
+
+        This is the canonical tool for setting a window's exact pixel bounds —
+        it moves AND resizes the window despite the name. Equivalent to calling
+        ``move_window`` with ``{"bounds": {x, y, w, h}}``, but without the
+        option to combine with a slot or desktop change.
+        """
         return MANAGER.resize_window(handle_id, bounds)
 
     @mcp.tool()

@@ -43,6 +43,18 @@ def register(mcp) -> None:
         """Delete a virtual desktop. Windows moves its windows to `fallback_desktop`
         (or to the desktop on the left by default).
 
+        Args:
+            target: Identifies the desktop to delete. Accepted forms:
+                - **index** (int): 0-based integer position (e.g. ``0`` for
+                  the first desktop).
+                - **name** (str): exact desktop name, whitespace-stripped
+                  (e.g. ``"Work"``).
+                - **GUID** (str): bare UUID string without extra quotes
+                  (e.g. ``"3f7b2e1a-..."``) — a double-quoted GUID will
+                  fail to resolve. Prefer GUID over index or name as the
+                  stable identifier, because indices and auto-generated names
+                  shift after any delete or reorder.
+
         Index stability: desktop indices are 0-based (Windows displays desktops
         as "Desktop 1", "Desktop 2", etc., which is 1-based). Both indices and
         auto-generated names shift after any delete or reorder and must not be
@@ -50,6 +62,10 @@ def register(mcp) -> None:
         "deleted_guid" (the GUID of the removed desktop) and "remaining" (a
         list of surviving desktop dicts, each with a "guid" field). Use "guid"
         as the stable identifier when addressing desktops programmatically.
+
+        Deleting the last/only desktop is not guarded: pyvda's ``desktop.remove()``
+        will surface as a tool error (COM error) when called on the only remaining
+        desktop.
         """
         return MANAGER.delete_desktop(target, fallback_desktop)
 
@@ -69,7 +85,18 @@ def register(mcp) -> None:
                   stable identifier, because indices and auto-generated names
                   shift after any delete or reorder.
         """
-        return MANAGER.switch_to_desktop(target)
+        try:
+            return MANAGER.switch_to_desktop(target)
+        except ValueError as exc:
+            if isinstance(target, str) and "Unknown desktop reference" in str(exc):
+                desktops = MANAGER.list_desktops()
+                n = len(desktops)
+                raise ValueError(
+                    f"Unknown desktop reference: {target!r} "
+                    f"(have {n} desktop(s)). "
+                    "Use list_desktops() to see valid names and GUIDs."
+                ) from exc
+            raise
 
     @mcp.tool()
     def rename_desktop(target: DesktopRef, new_name: str) -> dict:
@@ -95,7 +122,11 @@ def register(mcp) -> None:
     @mcp.tool()
     def pin_window_all_desktops(handle_id: str) -> dict:
         """Pin a tracked window so it is visible on every virtual desktop."""
-        return MANAGER.pin_window_all_desktops(handle_id)
+        pre = MANAGER.is_pinned(handle_id)
+        already_pinned = bool(pre.get("window_pinned"))
+        result = MANAGER.pin_window_all_desktops(handle_id)
+        result["already_pinned"] = already_pinned
+        return result
 
     @mcp.tool()
     def unpin_window(handle_id: str) -> dict:
