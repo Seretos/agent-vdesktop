@@ -11,6 +11,7 @@ production CI runner.
 """
 from __future__ import annotations
 
+import inspect
 import typing
 
 
@@ -252,4 +253,42 @@ def test_delete_desktop_documents_index_stability():
     assert "desktop_guid" not in doc, (
         "delete_desktop docstring must not use 'desktop_guid' — the actual keys are "
         "'deleted_guid' and 'guid'"
+    )
+
+
+def test_list_windows_default_includes_unmanaged():
+    """Regression #36: list_windows must default include_unmanaged=True so agents
+    see all top-level windows on a fresh session."""
+    mcp = _register_all()
+    fn = mcp.tool_fns["list_windows"]
+    sig = inspect.signature(fn)
+    default = sig.parameters["include_unmanaged"].default
+    assert default is True, (
+        f"list_windows include_unmanaged default is {default!r}, expected True"
+    )
+
+
+def test_list_windows_docstring_states_default_includes_unmanaged():
+    """Regression #36: list_windows docstring must explain the new default and
+    document the opt-out path (include_unmanaged=False)."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["list_windows"].__doc__
+    assert "default" in doc.lower(), (
+        "list_windows docstring must mention 'default' to explain include_unmanaged=True"
+    )
+    assert "unmanaged" in doc.lower(), (
+        "list_windows docstring must contain 'unmanaged'"
+    )
+    assert "include_unmanaged=False" in doc, (
+        "list_windows docstring must document the opt-out path 'include_unmanaged=False'"
+    )
+
+
+def test_list_unmanaged_windows_docstring_references_list_windows():
+    """Regression #36: list_unmanaged_windows docstring must reference list_windows
+    so agents understand the relationship and preferred discovery path."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["list_unmanaged_windows"].__doc__
+    assert "list_windows" in doc, (
+        "list_unmanaged_windows docstring must reference 'list_windows'"
     )

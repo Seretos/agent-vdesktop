@@ -14,7 +14,12 @@ def register(mcp) -> None:
     ) -> list[dict]:
         """List visible top-level windows that are NOT currently in the
         registry. Useful before adopting external windows. Filter by desktop
-        if given."""
+        if given.
+
+        This tool is equivalent to calling list_windows(include_unmanaged=True)
+        and filtering to entries not present in the registry. For general window
+        discovery, list_windows() is the recommended default starting point as it
+        returns all windows (both tracked and unmanaged) in one call."""
         return MANAGER.list_unmanaged_windows(desktop)
 
     @mcp.tool()

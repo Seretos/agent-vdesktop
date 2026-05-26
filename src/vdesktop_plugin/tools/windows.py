@@ -11,9 +11,13 @@ def register(mcp) -> None:
     @mcp.tool()
     def list_windows(
         desktop: Optional[Union[int, str]] = None,
-        include_unmanaged: bool = False,
+        include_unmanaged: bool = True,
     ) -> list[dict]:
-        """List tracked windows (and optionally unmanaged top-level windows).
+        """List windows on the virtual desktop.
+
+        By default, both managed and unmanaged top-level windows are returned
+        (include_unmanaged=True). Pass include_unmanaged=False to restrict
+        results to tracked (registry) windows only.
 
         Filters by desktop GUID if `desktop` is given.
 
@@ -24,7 +28,8 @@ def register(mcp) -> None:
           visible on every desktop, even though desktop_guid still reports
           its owning desktop.
 
-        Unmanaged row shape (present only when include_unmanaged=True):
+        Unmanaged row shape (present when include_unmanaged=True, which is the
+        default):
           Keys present: hwnd, pid, title, class_name, app_type,
           desktop_guid, and bounds.
           The tracked-window fields handle_id, label, slot_id, state,
