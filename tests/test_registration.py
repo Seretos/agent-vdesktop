@@ -292,3 +292,204 @@ def test_list_unmanaged_windows_docstring_references_list_windows():
     assert "list_windows" in doc, (
         "list_unmanaged_windows docstring must reference 'list_windows'"
     )
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for ticket #39 — discovery and addressing friction
+# ---------------------------------------------------------------------------
+
+def test_find_chrome_tab_docstring_tab_index_minus_one_is_accessibility_signal():
+    """Regression #39: find_chrome_tab docstring must explain that tab_index = -1
+    signals that UIA/accessibility enumeration did not run."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["find_chrome_tab"].__doc__
+
+    assert "tab_index" in doc, (
+        "find_chrome_tab docstring must mention 'tab_index'"
+    )
+    # Must reference accessibility or UIA near the -1 explanation
+    doc_lower = doc.lower()
+    assert "accessibility" in doc_lower or "uia" in doc_lower, (
+        "find_chrome_tab docstring must reference 'accessibility' or 'UIA' when "
+        "explaining the tab_index = -1 fallback"
+    )
+    assert "-1" in doc, (
+        "find_chrome_tab docstring must contain '-1' as the fallback sentinel"
+    )
+
+
+def test_find_chrome_tab_docstring_empty_result_ambiguity_documented():
+    """Regression #39: find_chrome_tab docstring must note that an empty result
+    is ambiguous — not exclusively 'no match'."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["find_chrome_tab"].__doc__
+
+    doc_lower = doc.lower()
+    # Must mention the no-Chrome-open possibility
+    assert "no chrome" in doc_lower or "open" in doc_lower, (
+        "find_chrome_tab docstring must note that no Chrome windows open is one "
+        "possible cause of an empty result"
+    )
+    # Must note the cases are indistinguishable (the plan's exact word)
+    assert "indistinguishable" in doc_lower or "ambiguous" in doc_lower, (
+        "find_chrome_tab docstring must state that the empty-result causes are "
+        "indistinguishable / ambiguous from the return value alone"
+    )
+
+
+def test_find_chrome_tab_adopted_flag_empty_result():
+    """Regression: find_chrome_tab returns [] when manager returns no results;
+    the adopted-flag injection loop must not raise on an empty list."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["find_chrome_tab"]
+
+    mock_manager = MagicMock()
+    mock_manager.list_windows.return_value = []
+    mock_manager.find_chrome_tab.return_value = []
+
+    with patch("vdesktop_plugin.tools.query.MANAGER", mock_manager):
+        result = fn(pattern="anything")
+
+    assert result == [], f"Expected [], got {result!r}"
+
+
+def test_find_chrome_tab_docstring_warns_mutation_at_top():
+    """Regression: find_chrome_tab docstring must contain the mutation warning
+    within the first ~200 characters so agents see it before truncation."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["find_chrome_tab"].__doc__
+    assert "WRITE" in doc[:200] or "ADOPT" in doc[:200].upper(), (
+        "find_chrome_tab docstring must warn about the write/adoption side-effect "
+        "near the top (first 200 chars)"
+    )
+
+
+def test_is_pinned_docstring_requires_tracked_window():
+    """Regression #39: is_pinned docstring must explain it requires a handle_id
+    that belongs to a tracked window."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["is_pinned"].__doc__
+
+    assert "tracked" in doc, (
+        "is_pinned docstring must contain 'tracked'"
+    )
+    assert "handle_id" in doc, (
+        "is_pinned docstring must contain 'handle_id'"
+    )
+
+
+def test_is_pinned_docstring_guides_to_list_windows_for_tracked_rows():
+    """Regression #39: is_pinned docstring must mention list_windows as a
+    source of pin state for already-tracked windows."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["is_pinned"].__doc__
+
+    assert "list_windows" in doc, (
+        "is_pinned docstring must reference 'list_windows' — tracked rows "
+        "already include is_pinned and is_app_pinned"
+    )
+
+
+def test_is_pinned_docstring_guides_to_adopt_window_for_untracked():
+    """Regression #39: is_pinned docstring must guide agents to adopt_window
+    when the window is not yet tracked."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["is_pinned"].__doc__
+
+    assert "adopt_window" in doc, (
+        "is_pinned docstring must reference 'adopt_window' for untracked windows"
+    )
+
+
+def test_switch_to_desktop_docstring_documents_target_forms():
+    """Regression #39: switch_to_desktop docstring must document that target
+    accepts an index, a name, and a GUID."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["switch_to_desktop"].__doc__
+
+    assert "index" in doc.lower(), (
+        "switch_to_desktop docstring must document 'index' as a target form"
+    )
+    assert "name" in doc.lower(), (
+        "switch_to_desktop docstring must document 'name' as a target form"
+    )
+    assert "guid" in doc.lower(), (
+        "switch_to_desktop docstring must document 'GUID' as a target form"
+    )
+
+
+def test_rename_desktop_docstring_documents_target_forms():
+    """Regression #39: rename_desktop docstring must document that target
+    accepts an index, a name, and a GUID."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["rename_desktop"].__doc__
+
+    assert "index" in doc.lower(), (
+        "rename_desktop docstring must document 'index' as a target form"
+    )
+    assert "name" in doc.lower(), (
+        "rename_desktop docstring must document 'name' as a target form"
+    )
+    assert "guid" in doc.lower(), (
+        "rename_desktop docstring must document 'GUID' as a target form"
+    )
+
+
+def test_switch_to_desktop_docstring_warns_guid_quoting():
+    """Regression #39: switch_to_desktop docstring must warn that a GUID must
+    not be wrapped in extra quotes."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["switch_to_desktop"].__doc__
+
+    assert "quote" in doc.lower() or "quoted" in doc.lower(), (
+        "switch_to_desktop docstring must warn about double-quoting a GUID "
+        "('quote' or 'quoted')"
+    )
+
+
+def test_rename_desktop_docstring_warns_guid_quoting():
+    """Regression #39: rename_desktop docstring must warn that a GUID must
+    not be wrapped in extra quotes."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["rename_desktop"].__doc__
+
+    assert "quote" in doc.lower() or "quoted" in doc.lower(), (
+        "rename_desktop docstring must warn about double-quoting a GUID "
+        "('quote' or 'quoted')"
+    )
+
+
+def test_find_window_by_title_docstring_documents_handle_id_null():
+    """Regression #39: find_window_by_title docstring must note that handle_id
+    is null/None for untracked windows."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["find_window_by_title"].__doc__
+
+    assert "null" in doc.lower() or "none" in doc.lower(), (
+        "find_window_by_title docstring must state that handle_id is null/None "
+        "for untracked windows"
+    )
+    assert "handle_id" in doc, (
+        "find_window_by_title docstring must mention 'handle_id'"
+    )
+
+
+def test_find_window_by_title_docstring_distinguishes_hwnd_from_handle_id():
+    """Regression #39: find_window_by_title docstring must distinguish hwnd
+    (always present) from handle_id (registry key, only for tracked windows)
+    and point to adopt_window."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["find_window_by_title"].__doc__
+
+    assert "hwnd" in doc, (
+        "find_window_by_title docstring must mention 'hwnd'"
+    )
+    assert "handle_id" in doc, (
+        "find_window_by_title docstring must mention 'handle_id'"
+    )
+    assert "adopt_window" in doc, (
+        "find_window_by_title docstring must reference 'adopt_window' for "
+        "obtaining a handle_id"
+    )

@@ -28,7 +28,14 @@ def register(mcp) -> None:
             regex: Treat pattern as a Python regex.
         Returns:
             List of {hwnd, title, class_name, desktop_guid, handle_id?}.
-            handle_id is set when the window is already in the registry.
+            ``hwnd`` is the OS-level integer window handle and is always
+            present. ``handle_id`` is a registry string key and is only
+            present (non-null) when the window is already in the tracking
+            registry. A null handle_id means the window is untracked — you
+            cannot pass it to tools that require a handle_id (such as
+            ``is_pinned``, ``move_window``, etc.). Call
+            ``adopt_window(hwnd)`` first to obtain a handle_id for an
+            untracked window.
         """
         return MANAGER.find_window_by_title(pattern, desktop, regex)
 
@@ -61,8 +68,13 @@ def register(mcp) -> None:
           ``tab_index >= 0`` and the real tab title.
 
         Returns ``[]`` when the pattern matches neither the active tab nor
-        anything UIA exposes. If you expect a background tab to match,
-        either:
+        anything UIA exposes. An empty result is ambiguous: it can mean no
+        Chrome windows were open at all, no tab title matched the pattern,
+        OR accessibility was off and no active (foreground) tab matched —
+        these three cases are indistinguishable from the return value alone.
+        Use ``find_window_by_title`` to verify Chrome windows are actually
+        visible before concluding there is no match. If you expect a
+        background tab to match, either:
 
           1. focus that tab so it becomes active and call again, or
           2. relaunch Chrome with ``--force-renderer-accessibility`` and
@@ -70,8 +82,11 @@ def register(mcp) -> None:
 
         Returns:
             List of {handle_id, hwnd, tab_index, tab_title, window_title,
-            adopted}. ``tab_index = -1`` means the match came from the window
-            title (active tab fallback) rather than UIA enumeration.
+            adopted}. ``tab_index = -1`` on every result means UIA tab
+            enumeration did not run — either accessibility was off or the
+            tab strip was inaccessible — and only the active-tab window-title
+            fallback was used. ``tab_index >= 0`` means UIA enumerated the
+            tab strip and the real per-tab title was matched.
             ``adopted`` is ``True`` when THIS call added the window to the
             tracking registry; ``False`` when the window was already tracked
             before this call.

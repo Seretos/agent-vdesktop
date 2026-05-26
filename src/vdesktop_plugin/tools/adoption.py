@@ -31,6 +31,11 @@ def register(mcp) -> None:
         """Add an existing HWND to the registry so it can be moved, focused,
         labeled, and tracked like a launched window. Returns the new handle_id.
 
+        The returned handle_id is the stable key for all subsequent window
+        operations (``move_window``, ``focus_window``, ``pin_window_all_desktops``,
+        etc.). After adoption, ``is_pinned(handle_id)`` is available for
+        pin-state inspection without any extra steps.
+
         `app_type_hint` overrides the auto-classification — pass it when you
         know the window's identity. Accepted values: ``"chrome"``, ``"edge"``,
         ``"vscode"``, ``"terminal"``, ``"unknown"``."""
