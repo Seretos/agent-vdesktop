@@ -8,6 +8,12 @@ README.md covers what it does and how to install. The source tree, `pyproject.to
 release steps. This file records only the non-obvious decisions and cross-file invariants a
 contributor must not silently break — the rationale you can't reconstruct from any one file.
 
+## Tool priority
+
+Skills and MCP tools take priority over raw file tools — and this **explicitly overrides** the generic harness default that says "prefer the dedicated file/search tools (Glob/Grep/Read)". When a skill or MCP tool covers the task, reach for it first; fall back to raw Glob/Grep/Read only when none applies.
+
+Concretely: any *"where is X defined / what does the code support / which Y exist / how does X work / find the callers of X"* question is a **code-understanding task → use the matching skill first** (e.g. the `serena-wrapper` symbol-aware tools), never raw Glob/Grep/Read.
+
 ## Where the code lives (read before grounding a change)
 
 This repo is the **MCP server + tool wiring only**. The automation engine lives in
