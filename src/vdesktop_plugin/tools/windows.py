@@ -42,6 +42,11 @@ def register(mcp) -> None:
           class_name.
           The tracked-window fields handle_id, label, slot_id, state,
           is_pinned, and is_app_pinned are absent from unmanaged rows.
+
+        NOTE: when a tracked window's ``state`` is ``"minimized"``, its
+        ``bounds`` are OS sentinel coordinates (e.g. values near -32000) and
+        are NOT meaningful screen positions. Do not use bounds for layout
+        decisions when state is "minimized".
         """
         rows = MANAGER.list_windows(desktop, include_unmanaged)
         for row in rows:
@@ -90,7 +95,9 @@ def register(mcp) -> None:
         This is the canonical tool for setting a window's exact pixel bounds —
         it moves AND resizes the window despite the name. Equivalent to calling
         ``move_window`` with ``{"bounds": {x, y, w, h}}``, but without the
-        option to combine with a slot or desktop change.
+        option to combine with a slot or desktop change. Use ``move_window``
+        when you also need to address a ``"slot"`` or change the ``"desktop"``
+        in the same call; ``resize_window`` only sets exact pixel bounds.
         """
         return MANAGER.resize_window(handle_id, bounds)
 

@@ -26,6 +26,9 @@ def register(mcp) -> None:
         """Create a new virtual desktop and return its info. If `name` is given,
         the desktop is renamed immediately (Windows 11).
 
+        NOTE: the currently active (foreground) desktop is NOT changed by this
+        call; it does not switch to the newly created desktop.
+
         Index stability: the returned index is 0-based (Windows displays desktops
         as "Desktop 1", "Desktop 2", etc., which is 1-based). Both indices and
         auto-generated names shift after any delete or reorder and must not be
@@ -41,7 +44,7 @@ def register(mcp) -> None:
         fallback_desktop: Optional[DesktopRef] = None,
     ) -> dict:
         """Delete a virtual desktop. Windows moves its windows to `fallback_desktop`
-        (or to the desktop on the left by default).
+        (or to the lower-index neighbouring desktop on the left by default).
 
         Args:
             target: Identifies the desktop to delete. Accepted forms:
@@ -118,13 +121,29 @@ def register(mcp) -> None:
                   delete or reorder.
             new_name: The new name to assign to the desktop.
         """
-        return MANAGER.rename_desktop(target, new_name)
+        try:
+            return MANAGER.rename_desktop(target, new_name)
+        except ValueError as exc:
+            if isinstance(target, str) and "Unknown desktop reference" in str(exc):
+                desktops = MANAGER.list_desktops()
+                n = len(desktops)
+                raise ValueError(
+                    f"Unknown desktop reference: {target!r} "
+                    f"(have {n} desktop(s)). "
+                    "Use list_desktops() to see valid names and GUIDs."
+                ) from exc
+            raise
 
     # -- Pinning (cross-desktop visibility) ---------------------------------
 
     @mcp.tool()
     def pin_window_all_desktops(handle_id: str) -> dict:
-        """Pin a tracked window so it is visible on every virtual desktop."""
+        """Pin a tracked window so it is visible on every virtual desktop.
+
+        The returned dict includes all fields from the lib's pin result plus
+        an ``already_pinned`` boolean (True when the window was already pinned
+        before this call, False when it was newly pinned by this call).
+        """
         pre = MANAGER.is_pinned(handle_id)
         already_pinned = bool(pre.get("window_pinned"))
         result = MANAGER.pin_window_all_desktops(handle_id)
@@ -161,6 +180,10 @@ def register(mcp) -> None:
     def is_pinned(handle_id: str) -> dict:
         """Return both the window-pinned and app-pinned state for a tracked window.
 
+        Returned keys are ``is_pinned`` and ``is_app_pinned``, aligned with the
+        field names used in ``list_windows`` tracked rows. Any other fields
+        returned by the lib (e.g. ``handle_id``) are passed through unchanged.
+
         This tool requires a handle_id, which only exists for windows that are
         already in the tracking registry. Windows returned by
         ``find_window_by_title`` and unmanaged rows from ``list_windows`` carry
@@ -174,4 +197,10 @@ def register(mcp) -> None:
         For an untracked window, call ``adopt_window(hwnd)`` first to register
         it and obtain a handle_id, then pass that handle_id here.
         """
-        return MANAGER.is_pinned(handle_id)
+        raw = dict(MANAGER.is_pinned(handle_id))
+        result = {k: v for k, v in raw.items() if k not in ("window_pinned", "app_pinned")}
+        if "window_pinned" in raw:
+            result["is_pinned"] = raw["window_pinned"]
+        if "app_pinned" in raw:
+            result["is_app_pinned"] = raw["app_pinned"]
+        return result

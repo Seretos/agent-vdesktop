@@ -461,6 +461,327 @@ def test_rename_desktop_docstring_warns_guid_quoting():
     )
 
 
+# ---------------------------------------------------------------------------
+# Regression tests for ticket #50 — tool surface clarity
+# ---------------------------------------------------------------------------
+
+def test_rename_desktop_unknown_name_reraises_with_list_desktops_hint():
+    """Regression #50: rename_desktop enriches 'Unknown desktop reference'
+    error with the desktop count and a hint to call list_desktops()."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["rename_desktop"]
+
+    mock_manager = MagicMock()
+    mock_manager.rename_desktop.side_effect = ValueError("Unknown desktop reference: 'foo'")
+    mock_manager.list_desktops.return_value = [{"guid": "a"}, {"guid": "b"}]
+
+    with patch("vdesktop_plugin.tools.desktops.MANAGER", mock_manager):
+        try:
+            fn(target="foo", new_name="Bar")
+            assert False, "Expected ValueError to be raised"
+        except ValueError as exc:
+            msg = str(exc)
+            assert "list_desktops" in msg, (
+                f"Error message must mention 'list_desktops': {msg!r}"
+            )
+            assert "2" in msg, (
+                f"Error message must include the desktop count '2': {msg!r}"
+            )
+
+
+def test_is_pinned_returns_renamed_keys():
+    """Regression #50: is_pinned tool must expose keys is_pinned/is_app_pinned
+    (aligned with list_windows rows), NOT window_pinned/app_pinned."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["is_pinned"]
+
+    mock_manager = MagicMock()
+    mock_manager.is_pinned.return_value = {
+        "handle_id": "h1",
+        "window_pinned": True,
+        "app_pinned": False,
+    }
+
+    with patch("vdesktop_plugin.tools.desktops.MANAGER", mock_manager):
+        result = fn(handle_id="h1")
+
+    assert "is_pinned" in result, (
+        f"is_pinned result must have key 'is_pinned', got keys: {list(result.keys())}"
+    )
+    assert "is_app_pinned" in result, (
+        f"is_pinned result must have key 'is_app_pinned', got keys: {list(result.keys())}"
+    )
+    assert "window_pinned" not in result, (
+        "is_pinned result must NOT expose raw key 'window_pinned'"
+    )
+    assert "app_pinned" not in result, (
+        "is_pinned result must NOT expose raw key 'app_pinned'"
+    )
+    assert result["is_pinned"] is True
+    assert result["is_app_pinned"] is False
+    assert result["handle_id"] == "h1", "passthrough fields must be preserved"
+
+
+def test_release_window_raises_on_released_false():
+    """Regression #50: release_window raises ValueError when MANAGER returns
+    {released: False} (unknown or already-released handle)."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["release_window"]
+
+    mock_manager = MagicMock()
+    mock_manager.release_window.return_value = {"released": False}
+
+    with patch("vdesktop_plugin.tools.adoption.MANAGER", mock_manager):
+        try:
+            fn(handle_id="h-unknown")
+            assert False, "Expected ValueError to be raised"
+        except ValueError as exc:
+            msg = str(exc)
+            assert "list_windows" in msg, (
+                f"Error message must mention 'list_windows': {msg!r}"
+            )
+
+
+def test_release_window_returns_dict_on_success():
+    """Regression #50: release_window returns the result dict when
+    MANAGER returns {released: True}."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["release_window"]
+
+    mock_manager = MagicMock()
+    mock_manager.release_window.return_value = {"released": True, "handle_id": "h1"}
+
+    with patch("vdesktop_plugin.tools.adoption.MANAGER", mock_manager):
+        result = fn(handle_id="h1")
+
+    assert result == {"released": True, "handle_id": "h1"}, (
+        f"release_window must return the dict unchanged on success, got: {result!r}"
+    )
+
+
+def test_compute_layout_raises_valueerror_for_string_spec():
+    """Regression #50: compute_layout raises ValueError (not a raw pydantic
+    error) when called with a plain string as spec."""
+    mcp = _register_all()
+    fn = mcp.tool_fns["compute_layout"]
+
+    try:
+        fn(spec="three-columns")
+        assert False, "Expected ValueError to be raised for a string spec"
+    except ValueError as exc:
+        msg = str(exc)
+        assert "preset" in msg.lower() or '{"type"' in msg, (
+            f"ValueError message must guide toward the preset dict form: {msg!r}"
+        )
+        assert "list_layout_presets" in msg, (
+            f"ValueError message must mention 'list_layout_presets': {msg!r}"
+        )
+    except Exception as exc:
+        assert False, (
+            f"compute_layout must raise ValueError for string spec, got {type(exc).__name__}: {exc}"
+        )
+
+
+def test_pin_window_all_desktops_already_pinned_sanity():
+    """Regression #50 sanity: pin_window_all_desktops still injects already_pinned
+    correctly after #50 changes (is_pinned pre-check still reads window_pinned from
+    MANAGER directly, not from the tool wrapper)."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["pin_window_all_desktops"]
+
+    mock_manager = MagicMock()
+    mock_manager.is_pinned.return_value = {
+        "handle_id": "h1",
+        "window_pinned": False,
+        "app_pinned": False,
+    }
+    mock_manager.pin_window_all_desktops.return_value = {
+        "handle_id": "h1",
+        "window_pinned": True,
+    }
+
+    with patch("vdesktop_plugin.tools.desktops.MANAGER", mock_manager):
+        result = fn(handle_id="h1")
+
+    assert "already_pinned" in result, (
+        "pin_window_all_desktops result must include 'already_pinned'"
+    )
+    assert result["already_pinned"] is False, (
+        f"already_pinned must be False when window was not pinned before the call"
+    )
+
+
+# --- Docstring assertion tests for ticket #50 ---
+
+def test_create_desktop_docstring_mentions_active_desktop_not_changed():
+    """Regression #50: create_desktop docstring must state that the active
+    (foreground) desktop is NOT changed."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["create_desktop"].__doc__
+
+    doc_lower = doc.lower()
+    assert "active" in doc_lower or "foreground" in doc_lower, (
+        "create_desktop docstring must mention 'active' or 'foreground' desktop"
+    )
+    assert "not" in doc_lower, (
+        "create_desktop docstring must state the active desktop is NOT changed"
+    )
+
+
+def test_delete_desktop_docstring_mentions_lower_index_fallback():
+    """Regression #50: delete_desktop docstring must clarify the fallback as
+    the lower-index neighbouring desktop."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["delete_desktop"].__doc__
+
+    assert "index" in doc.lower(), (
+        "delete_desktop docstring must mention 'index' when describing the fallback"
+    )
+    assert "left" in doc.lower() or "lower" in doc.lower(), (
+        "delete_desktop docstring must mention 'left' or 'lower' for the fallback desktop"
+    )
+
+
+def test_resize_window_docstring_mentions_slot_and_desktop():
+    """Regression #50: resize_window docstring must mention 'slot' and 'desktop'
+    to guide callers toward move_window for those use cases."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["resize_window"].__doc__
+
+    assert "slot" in doc, (
+        "resize_window docstring must mention 'slot' (to guide toward move_window)"
+    )
+    assert "desktop" in doc.lower(), (
+        "resize_window docstring must mention 'desktop' (to guide toward move_window)"
+    )
+
+
+def test_list_windows_docstring_mentions_minimized_sentinel_bounds():
+    """Regression #50: list_windows docstring must warn that minimized window
+    bounds are OS sentinel coordinates (near -32000) and not meaningful."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["list_windows"].__doc__
+
+    assert "minimized" in doc.lower(), (
+        "list_windows docstring must mention 'minimized'"
+    )
+    assert "-32000" in doc or "sentinel" in doc.lower(), (
+        "list_windows docstring must mention '-32000' or 'sentinel' for minimized bounds"
+    )
+
+
+def test_find_window_by_title_empty_pattern_matches_all():
+    """Regression #50: find_window_by_title docstring must document that
+    pattern='' matches ALL visible windows."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["find_window_by_title"].__doc__
+
+    doc_lower = doc.lower()
+    assert 'pattern=""' in doc or "empty" in doc_lower, (
+        'find_window_by_title docstring must document that pattern="" matches all windows'
+    )
+    assert "all" in doc_lower, (
+        "find_window_by_title docstring must mention 'all' (empty pattern matches all)"
+    )
+
+
+def test_compute_layout_docstring_preset_dict_form_and_list_layout_presets():
+    """Regression #50: compute_layout docstring must show the preset dict form
+    {'type': 'preset', ...} and reference list_layout_presets()."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["compute_layout"].__doc__
+
+    assert '{"type": "preset"' in doc or "\"type\": \"preset\"" in doc, (
+        'compute_layout docstring must show the {"type": "preset", ...} form'
+    )
+    assert "list_layout_presets" in doc, (
+        "compute_layout docstring must reference 'list_layout_presets'"
+    )
+
+
+def test_compute_layout_docstring_preview_vs_apply_layout_contrast():
+    """Regression #50: compute_layout docstring must contrast it with
+    apply_layout (preview-only vs persists active layout)."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["compute_layout"].__doc__
+
+    doc_lower = doc.lower()
+    assert "preview" in doc_lower or "side effect" in doc_lower or "no side" in doc_lower, (
+        "compute_layout docstring must describe it as preview-only / no side effects"
+    )
+    assert "apply_layout" in doc, (
+        "compute_layout docstring must reference 'apply_layout'"
+    )
+
+
+def test_apply_layout_docstring_mentions_active_layout_and_move_window():
+    """Regression #50: apply_layout docstring must state it sets the active
+    layout and mention move_window as a tool that can target slot ids."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["apply_layout"].__doc__
+
+    doc_lower = doc.lower()
+    assert "active" in doc_lower, (
+        "apply_layout docstring must mention 'active' layout"
+    )
+    assert "move_window" in doc, (
+        "apply_layout docstring must reference 'move_window'"
+    )
+
+
+def test_is_pinned_docstring_mentions_renamed_keys():
+    """Regression #50: is_pinned docstring must document that returned keys are
+    is_pinned / is_app_pinned (aligned with list_windows rows)."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["is_pinned"].__doc__
+
+    assert "is_pinned" in doc, (
+        "is_pinned docstring must mention 'is_pinned' as a returned key"
+    )
+    assert "is_app_pinned" in doc, (
+        "is_pinned docstring must mention 'is_app_pinned' as a returned key"
+    )
+    assert "list_windows" in doc, (
+        "is_pinned docstring must reference alignment with 'list_windows' rows"
+    )
+
+
+def test_pin_window_all_desktops_docstring_mentions_already_pinned():
+    """Regression #50: pin_window_all_desktops docstring must document the
+    already_pinned field in the returned dict."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["pin_window_all_desktops"].__doc__
+
+    assert "already_pinned" in doc, (
+        "pin_window_all_desktops docstring must mention 'already_pinned'"
+    )
+
+
+def test_release_window_docstring_mentions_raises_on_unknown():
+    """Regression #50: release_window docstring must state it raises when
+    handle_id is not a currently-tracked window."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["release_window"].__doc__
+
+    doc_lower = doc.lower()
+    assert "raises" in doc_lower or "raise" in doc_lower, (
+        "release_window docstring must mention that it raises on unknown handle"
+    )
+    assert "list_windows" in doc, (
+        "release_window docstring must reference 'list_windows'"
+    )
+
+
 def test_find_window_by_title_docstring_documents_handle_id_null():
     """Regression #39: find_window_by_title docstring must note that handle_id
     is null/None for untracked windows."""
