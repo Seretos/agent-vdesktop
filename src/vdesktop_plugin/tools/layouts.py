@@ -6,6 +6,7 @@ from typing import Optional, Union
 
 from lib_python_vdesktop import LayoutSpec
 from lib_python_vdesktop.layouts import PRESETS
+from pydantic import ValidationError
 
 from ._engine import MANAGER
 
@@ -46,7 +47,13 @@ def register(mcp) -> None:
     @mcp.tool()
     def compute_layout(spec: LayoutSpec) -> list[dict]:
         """Resolve a LayoutSpec into concrete slot rectangles WITHOUT moving any
-        windows. Useful for previewing a layout.
+        windows. PREVIEW-ONLY — this call has no side effects and does NOT set
+        the active layout. Use ``apply_layout`` to persist the layout so that
+        slot ids can be targeted by ``move_window`` / ``launch_*``.
+
+        PRESET INDIRECTION: to use a preset, pass
+        ``{"type": "preset", "name": "<name>"}`` — a bare preset-name string
+        is NOT accepted. Call ``list_layout_presets()`` to see valid names.
 
         A LayoutSpec is either ONE dict for one monitor, or a LIST of such
         dicts (one per monitor). Each dict must have a "type" key:
@@ -69,16 +76,30 @@ def register(mcp) -> None:
           grid    → r0c0, r0c1, r1c0, r1c1, … (compact rRcC format)
         regions use the "id" value supplied in each region dict.
         """
-        return MANAGER.compute_layout(spec)
+        if isinstance(spec, str):
+            raise ValueError(
+                'spec must be a layout dict or a list of dicts, not a plain string. '
+                'For a preset use {"type": "preset", "name": "<name>"}; '
+                "call list_layout_presets() for valid names."
+            )
+        try:
+            return MANAGER.compute_layout(spec)
+        except (ValidationError, TypeError) as exc:
+            raise ValueError(
+                'Invalid layout spec. spec must be a layout dict or a list of dicts. '
+                'For a preset use {"type": "preset", "name": "<name>"}; '
+                f"call list_layout_presets() for valid names. Original error: {exc}"
+            ) from exc
 
     @mcp.tool()
     def apply_layout(
         spec: LayoutSpec,
         target_desktop: Optional[Union[int, str]] = None,
     ) -> list[dict]:
-        """Compute the layout and remember it as the active layout for the given
-        desktop (default: current). Returns the list of slot rectangles that
-        subsequent launcher / move_window calls can target by slot_id.
+        """Compute the layout and set it as the active layout for the given
+        desktop (default: current). Unlike ``compute_layout`` (preview-only),
+        this call persists the layout so that slot ids become targetable by
+        ``move_window`` and ``launch_*``. Returns the list of slot rectangles.
 
         Spec grammar (see compute_layout for full details):
           {"type": "preset",  "name": "three-columns", "monitor": 0}

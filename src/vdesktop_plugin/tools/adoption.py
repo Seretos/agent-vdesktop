@@ -17,9 +17,14 @@ def register(mcp) -> None:
         if given.
 
         This tool is equivalent to calling list_windows(include_unmanaged=True)
-        and filtering to entries not present in the registry. For general window
-        discovery, list_windows() is the recommended default starting point as it
-        returns all windows (both tracked and unmanaged) in one call."""
+        and filtering to entries not present in the registry.
+
+        When to prefer which: prefer ``list_unmanaged_windows`` when you
+        specifically want only adoption candidates (unmanaged windows)
+        pre-filtered; prefer ``list_windows()`` as the general default — it
+        returns both tracked and unmanaged windows in one call without any
+        pre-filtering.
+        """
         return MANAGER.list_unmanaged_windows(desktop)
 
     @mcp.tool()
@@ -45,5 +50,17 @@ def register(mcp) -> None:
 
     @mcp.tool()
     def release_window(handle_id: str) -> dict:
-        """Remove a window from the registry. The window itself stays open."""
-        return MANAGER.release_window(handle_id)
+        """Remove a tracked window from the registry. The window itself stays
+        open and is removed from the tracking registry.
+
+        Raises ``ValueError`` if ``handle_id`` is not a currently-tracked
+        window (unknown or already released). Call ``list_windows()`` to see
+        currently-tracked windows.
+        """
+        result = MANAGER.release_window(handle_id)
+        if isinstance(result, dict) and result.get("released") is False:
+            raise ValueError(
+                f"Unknown or already-released handle_id: {handle_id!r}. "
+                "Call list_windows() to see currently-tracked windows."
+            )
+        return result

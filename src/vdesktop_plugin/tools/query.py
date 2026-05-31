@@ -23,7 +23,10 @@ def register(mcp) -> None:
         use `find_chrome_tab` instead.
 
         Args:
-            pattern: Substring (default) or regex (if regex=True).
+            pattern: Substring (default) or regex (if regex=True). Passing
+                ``pattern=""`` with ``regex=False`` matches ALL visible windows
+                because an empty substring matches every title — pass a
+                non-empty pattern to filter.
             desktop: Optional desktop filter.
             regex: Treat pattern as a Python regex.
         Returns:
