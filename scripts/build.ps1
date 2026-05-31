@@ -180,7 +180,7 @@ if ($Package) {
     if (Test-Path "skills") {
         Copy-Item -Recurse -Force "skills" $stage
     }
-    Copy-Item -Force "README.md", "LICENSE" $stage -ErrorAction SilentlyContinue
+    Copy-Item -Force "README.md", "LICENSE", "description.md" $stage -ErrorAction SilentlyContinue
     if (Test-Path "assets") {
         Copy-Item -Recurse -Force "assets" $stage
     }
