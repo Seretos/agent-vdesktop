@@ -49,11 +49,12 @@ def register(mcp) -> None:
                   the first desktop).
                 - **name** (str): exact desktop name, whitespace-stripped
                   (e.g. ``"Work"``).
-                - **GUID** (str): bare UUID string without extra quotes
-                  (e.g. ``"3f7b2e1a-..."``) — a double-quoted GUID will
-                  fail to resolve. Prefer GUID over index or name as the
-                  stable identifier, because indices and auto-generated names
-                  shift after any delete or reorder.
+                - **GUID** (str): braced GUID string as returned by
+                  ``list_desktops`` (e.g. ``"{3f7b2e1a-...}"``). The curly
+                  braces are required — omitting them will fail to resolve.
+                  Prefer GUID over index or name as the stable identifier,
+                  because indices and auto-generated names shift after any
+                  delete or reorder.
 
         Index stability: desktop indices are 0-based (Windows displays desktops
         as "Desktop 1", "Desktop 2", etc., which is 1-based). Both indices and
@@ -79,11 +80,12 @@ def register(mcp) -> None:
                   the first desktop).
                 - **name** (str): exact desktop name, whitespace-stripped
                   (e.g. ``"Work"``).
-                - **GUID** (str): bare UUID string without extra quotes
-                  (e.g. ``"3f7b2e1a-..."``) — a double-quoted GUID will
-                  fail to resolve. Prefer GUID over index or name as the
-                  stable identifier, because indices and auto-generated names
-                  shift after any delete or reorder.
+                - **GUID** (str): braced GUID string as returned by
+                  ``list_desktops`` (e.g. ``"{3f7b2e1a-...}"``). The curly
+                  braces are required — omitting them will fail to resolve.
+                  Prefer GUID over index or name as the stable identifier,
+                  because indices and auto-generated names shift after any
+                  delete or reorder.
         """
         try:
             return MANAGER.switch_to_desktop(target)
@@ -108,11 +110,12 @@ def register(mcp) -> None:
                   the first desktop).
                 - **name** (str): exact desktop name, whitespace-stripped
                   (e.g. ``"Work"``).
-                - **GUID** (str): bare UUID string without extra quotes
-                  (e.g. ``"3f7b2e1a-..."``) — a double-quoted GUID will
-                  fail to resolve. Prefer GUID over index or name as the
-                  stable identifier, because indices and auto-generated names
-                  shift after any delete or reorder.
+                - **GUID** (str): braced GUID string as returned by
+                  ``list_desktops`` (e.g. ``"{3f7b2e1a-...}"``). The curly
+                  braces are required — omitting them will fail to resolve.
+                  Prefer GUID over index or name as the stable identifier,
+                  because indices and auto-generated names shift after any
+                  delete or reorder.
             new_name: The new name to assign to the desktop.
         """
         return MANAGER.rename_desktop(target, new_name)

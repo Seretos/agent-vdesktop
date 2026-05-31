@@ -438,26 +438,26 @@ def test_rename_desktop_docstring_documents_target_forms():
 
 
 def test_switch_to_desktop_docstring_warns_guid_quoting():
-    """Regression #39: switch_to_desktop docstring must warn that a GUID must
-    not be wrapped in extra quotes."""
+    """Regression #39/#49: switch_to_desktop docstring must guide callers to
+    use the braced GUID form returned by list_desktops."""
     mcp = _register_all()
     doc = mcp.tool_fns["switch_to_desktop"].__doc__
 
-    assert "quote" in doc.lower() or "quoted" in doc.lower(), (
-        "switch_to_desktop docstring must warn about double-quoting a GUID "
-        "('quote' or 'quoted')"
+    assert "braces" in doc.lower() or "curly" in doc.lower() or "{" in doc, (
+        "switch_to_desktop docstring must reference braces/curly braces or "
+        "show a braced GUID example ('{' character)"
     )
 
 
 def test_rename_desktop_docstring_warns_guid_quoting():
-    """Regression #39: rename_desktop docstring must warn that a GUID must
-    not be wrapped in extra quotes."""
+    """Regression #39/#49: rename_desktop docstring must guide callers to
+    use the braced GUID form returned by list_desktops."""
     mcp = _register_all()
     doc = mcp.tool_fns["rename_desktop"].__doc__
 
-    assert "quote" in doc.lower() or "quoted" in doc.lower(), (
-        "rename_desktop docstring must warn about double-quoting a GUID "
-        "('quote' or 'quoted')"
+    assert "braces" in doc.lower() or "curly" in doc.lower() or "{" in doc, (
+        "rename_desktop docstring must reference braces/curly braces or "
+        "show a braced GUID example ('{' character)"
     )
 
 
@@ -766,4 +766,81 @@ def test_resize_window_docstring_notes_overlap_with_move_window():
 
     assert "move_window" in doc, (
         "resize_window docstring must mention 'move_window'"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for ticket #49 — GUID braced-form docstring corrections
+# ---------------------------------------------------------------------------
+
+def test_delete_desktop_docstring_guid_requires_braced_form():
+    """Regression #49: delete_desktop docstring must show a braced GUID example
+    and must not contain the old misleading 'bare UUID' or 'without extra quotes'
+    language."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["delete_desktop"].__doc__
+
+    # (a) A braced-form example must be present (the '{' character appears in
+    #     the GUID bullet, e.g. ``"{3f7b2e1a-...}"``).
+    assert "{" in doc, (
+        "delete_desktop docstring GUID bullet must contain a braced example "
+        "('{' character) as returned by list_desktops"
+    )
+    # (b) The old incorrect 'bare UUID' phrasing must be gone.
+    assert "bare UUID" not in doc, (
+        "delete_desktop docstring must not contain 'bare UUID' — "
+        "callers need the braced form, not a bare UUID"
+    )
+    # (c) The old misleading 'without extra quotes' phrasing must be gone.
+    assert "without extra quotes" not in doc, (
+        "delete_desktop docstring must not contain 'without extra quotes' — "
+        "the issue is missing curly braces, not extra quote characters"
+    )
+
+
+def test_switch_to_desktop_docstring_guid_requires_braced_form():
+    """Regression #49: switch_to_desktop docstring must show a braced GUID
+    example and must not contain the old misleading 'bare UUID' or 'without
+    extra quotes' language."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["switch_to_desktop"].__doc__
+
+    # (a) A braced-form example must be present.
+    assert "{" in doc, (
+        "switch_to_desktop docstring GUID bullet must contain a braced example "
+        "('{' character) as returned by list_desktops"
+    )
+    # (b) The old incorrect 'bare UUID' phrasing must be gone.
+    assert "bare UUID" not in doc, (
+        "switch_to_desktop docstring must not contain 'bare UUID' — "
+        "callers need the braced form, not a bare UUID"
+    )
+    # (c) The old misleading 'without extra quotes' phrasing must be gone.
+    assert "without extra quotes" not in doc, (
+        "switch_to_desktop docstring must not contain 'without extra quotes' — "
+        "the issue is missing curly braces, not extra quote characters"
+    )
+
+
+def test_rename_desktop_docstring_guid_requires_braced_form():
+    """Regression #49: rename_desktop docstring must show a braced GUID example
+    and must not contain the old misleading 'bare UUID' or 'without extra
+    quotes' language."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["rename_desktop"].__doc__
+
+    # (a) A braced-form example must be present.
+    assert "{" in doc, (
+        "rename_desktop docstring GUID bullet must contain a braced example "
+        "('{' character) as returned by list_desktops"
+    )
+    # (b) The old incorrect 'bare UUID' phrasing must be gone.
+    assert "bare UUID" not in doc, (
+        "rename_desktop docstring must not contain 'bare UUID' — "
+        "callers need the braced form, not a bare UUID"
+    )
+    # (c) The old misleading 'without extra quotes' phrasing must be gone.
+    assert "without extra quotes" not in doc, (
+        "rename_desktop docstring must not contain 'without extra quotes' — "
+        "the issue is missing curly braces, not extra quote characters"
     )
