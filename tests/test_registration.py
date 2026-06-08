@@ -1281,3 +1281,54 @@ def test_launch_app_docstring_describes_env_inherit_and_overlay():
     assert "inherit" in doc_lower or "overlay" in doc_lower or "overlaid" in doc_lower, (
         "launch_app docstring must describe inherit/overlay semantics for env"
     )
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for ticket #63 — expose wsl_distro on launch_vscode
+# ---------------------------------------------------------------------------
+
+def test_launch_vscode_has_wsl_distro_parameter_defaulting_to_none():
+    """Regression #63: launch_vscode tool function must have a `wsl_distro`
+    parameter with a default of None."""
+    mcp = _register_all()
+    fn = mcp.tool_fns["launch_vscode"]
+    sig = inspect.signature(fn)
+    assert "wsl_distro" in sig.parameters, (
+        "launch_vscode signature must include a 'wsl_distro' parameter"
+    )
+    assert sig.parameters["wsl_distro"].default is None, (
+        f"launch_vscode 'wsl_distro' parameter default must be None, "
+        f"got {sig.parameters['wsl_distro'].default!r}"
+    )
+
+
+def test_launch_vscode_forwards_wsl_distro_to_manager():
+    """Regression #63: launch_vscode must forward the wsl_distro kwarg to
+    MANAGER.launch_vscode as a keyword argument."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["launch_vscode"]
+
+    mock_manager = MagicMock()
+    mock_manager.launch_vscode.return_value = {"handle_id": "h1"}
+
+    with patch("vdesktop_plugin.tools.launchers.vscode.MANAGER", mock_manager):
+        result = fn(folder="/home/user/project", wsl_distro="claude-agents")
+
+    mock_manager.launch_vscode.assert_called_once()
+    _, kwargs = mock_manager.launch_vscode.call_args
+    assert kwargs.get("wsl_distro") == "claude-agents", (
+        f"MANAGER.launch_vscode must be called with wsl_distro='claude-agents', "
+        f"got call_args={mock_manager.launch_vscode.call_args!r}"
+    )
+
+
+def test_launch_vscode_docstring_mentions_wsl_distro():
+    """Regression #63: launch_vscode docstring must mention 'wsl_distro'."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["launch_vscode"].__doc__
+
+    assert "wsl_distro" in doc, (
+        "launch_vscode docstring must mention 'wsl_distro'"
+    )
