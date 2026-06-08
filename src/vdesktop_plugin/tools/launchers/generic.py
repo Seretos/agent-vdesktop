@@ -16,6 +16,7 @@ def register(mcp) -> None:
         desktop: Optional[Union[int, str]] = None,
         label: Optional[str] = None,
         identification: Optional[dict] = None,
+        env: Optional[dict[str, str]] = None,
     ) -> dict:
         """Launch an arbitrary executable and adopt the resulting window.
 
@@ -40,7 +41,11 @@ def register(mcp) -> None:
                 For these apps ``title_contains`` identification is required.
                 If the tool errors, the relocated window can be recovered via
                 ``list_windows`` or ``find_window_by_title``.
+            env: Optional mapping of environment variables to overlay on the
+                process environment. When supplied the process inherits a full
+                copy of os.environ with these keys overlaid. Pass None (default)
+                to inherit the environment unchanged.
         """
         return MANAGER.launch_app(
-            executable, args, cwd, slot, desktop, label, identification
+            executable, args, cwd, slot, desktop, label, identification, env=env
         )
