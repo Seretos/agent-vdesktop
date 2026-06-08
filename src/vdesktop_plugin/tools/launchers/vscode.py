@@ -16,6 +16,7 @@ def register(mcp) -> None:
         label: Optional[str] = None,
         reuse_window: bool = False,
         env: Optional[dict[str, str]] = None,
+        wsl_distro: Optional[str] = None,
     ) -> dict:
         """Launch VS Code on a folder (and optionally open specific files).
 
@@ -31,5 +32,11 @@ def register(mcp) -> None:
                 process environment. When supplied the process inherits a full
                 copy of os.environ with these keys overlaid. Pass None (default)
                 to inherit the environment unchanged.
+            wsl_distro: Optional WSL distribution name used to resolve POSIX
+                paths in ``folder`` and ``files``. Defaults to the calling WSL
+                distro when the tool is invoked from within WSL; pass a name
+                (e.g. ``"Ubuntu"``) to override which distro the path mapping
+                is resolved against. Pass None (default) to let the engine
+                detect the calling distro automatically.
         """
-        return MANAGER.launch_vscode(folder, files, slot, desktop, label, reuse_window, env=env)
+        return MANAGER.launch_vscode(folder, files, slot, desktop, label, reuse_window, env=env, wsl_distro=wsl_distro)
