@@ -15,6 +15,7 @@ def register(mcp) -> None:
         label: Optional[str] = None,
         new_user_data_dir: bool = True,
         inprivate: bool = False,
+        env: Optional[dict[str, str]] = None,
     ) -> dict:
         """Launch Microsoft Edge with one or more tabs in a NEW window.
 
@@ -27,9 +28,13 @@ def register(mcp) -> None:
                 browser process — without this, Edge may IPC to an existing
                 instance and the spawn PID exits before HWND resolution.
             inprivate: Open in InPrivate mode.
+            env: Optional mapping of environment variables to overlay on the
+                process environment. When supplied the process inherits a full
+                copy of os.environ with these keys overlaid. Pass None (default)
+                to inherit the environment unchanged.
         Returns:
             {handle_id, hwnd, pid, label, app_type, desktop_guid, slot_id, bounds, title}
         """
         return MANAGER.launch_edge(
-            urls, slot, desktop, label, new_user_data_dir, inprivate
+            urls, slot, desktop, label, new_user_data_dir, inprivate, env=env
         )

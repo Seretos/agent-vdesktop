@@ -1165,3 +1165,119 @@ def test_rename_desktop_docstring_guid_requires_braced_form():
         "rename_desktop docstring must not contain 'without extra quotes' — "
         "the issue is missing curly braces, not extra quote characters"
     )
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for ticket #59 — expose env parameter on launcher tools
+# ---------------------------------------------------------------------------
+
+def test_launch_app_has_env_parameter_defaulting_to_none():
+    """Regression #59: launch_app tool function must have an `env` parameter
+    with a default of None."""
+    mcp = _register_all()
+    fn = mcp.tool_fns["launch_app"]
+    sig = inspect.signature(fn)
+    assert "env" in sig.parameters, (
+        "launch_app signature must include an 'env' parameter"
+    )
+    assert sig.parameters["env"].default is None, (
+        f"launch_app 'env' parameter default must be None, "
+        f"got {sig.parameters['env'].default!r}"
+    )
+
+
+def test_launch_chrome_has_env_parameter_defaulting_to_none():
+    """Regression #59: launch_chrome tool function must have an `env` parameter
+    with a default of None."""
+    mcp = _register_all()
+    fn = mcp.tool_fns["launch_chrome"]
+    sig = inspect.signature(fn)
+    assert "env" in sig.parameters, (
+        "launch_chrome signature must include an 'env' parameter"
+    )
+    assert sig.parameters["env"].default is None, (
+        f"launch_chrome 'env' parameter default must be None, "
+        f"got {sig.parameters['env'].default!r}"
+    )
+
+
+def test_launch_edge_has_env_parameter_defaulting_to_none():
+    """Regression #59: launch_edge tool function must have an `env` parameter
+    with a default of None."""
+    mcp = _register_all()
+    fn = mcp.tool_fns["launch_edge"]
+    sig = inspect.signature(fn)
+    assert "env" in sig.parameters, (
+        "launch_edge signature must include an 'env' parameter"
+    )
+    assert sig.parameters["env"].default is None, (
+        f"launch_edge 'env' parameter default must be None, "
+        f"got {sig.parameters['env'].default!r}"
+    )
+
+
+def test_launch_terminal_has_env_parameter_defaulting_to_none():
+    """Regression #59: launch_terminal tool function must have an `env` parameter
+    with a default of None."""
+    mcp = _register_all()
+    fn = mcp.tool_fns["launch_terminal"]
+    sig = inspect.signature(fn)
+    assert "env" in sig.parameters, (
+        "launch_terminal signature must include an 'env' parameter"
+    )
+    assert sig.parameters["env"].default is None, (
+        f"launch_terminal 'env' parameter default must be None, "
+        f"got {sig.parameters['env'].default!r}"
+    )
+
+
+def test_launch_vscode_has_env_parameter_defaulting_to_none():
+    """Regression #59: launch_vscode tool function must have an `env` parameter
+    with a default of None."""
+    mcp = _register_all()
+    fn = mcp.tool_fns["launch_vscode"]
+    sig = inspect.signature(fn)
+    assert "env" in sig.parameters, (
+        "launch_vscode signature must include an 'env' parameter"
+    )
+    assert sig.parameters["env"].default is None, (
+        f"launch_vscode 'env' parameter default must be None, "
+        f"got {sig.parameters['env'].default!r}"
+    )
+
+
+def test_launch_app_forwards_env_to_manager():
+    """Regression #59: launch_app must forward the env kwarg to MANAGER.launch_app
+    as a keyword argument."""
+    from unittest.mock import MagicMock, patch
+
+    mcp = _register_all()
+    fn = mcp.tool_fns["launch_app"]
+
+    mock_manager = MagicMock()
+    mock_manager.launch_app.return_value = {"handle_id": "h1"}
+
+    with patch("vdesktop_plugin.tools.launchers.generic.MANAGER", mock_manager):
+        result = fn(executable="notepad.exe", env={"MY_VAR": "val"})
+
+    mock_manager.launch_app.assert_called_once()
+    _, kwargs = mock_manager.launch_app.call_args
+    assert kwargs.get("env") == {"MY_VAR": "val"}, (
+        f"MANAGER.launch_app must be called with env={{'MY_VAR': 'val'}}, "
+        f"got call_args={mock_manager.launch_app.call_args!r}"
+    )
+
+
+def test_launch_app_docstring_describes_env_inherit_and_overlay():
+    """Regression #59: launch_app docstring must describe the env parameter
+    with inherit-and-overlay semantics."""
+    mcp = _register_all()
+    doc = mcp.tool_fns["launch_app"].__doc__
+
+    assert "env" in doc, (
+        "launch_app docstring must mention 'env' parameter"
+    )
+    doc_lower = doc.lower()
+    assert "inherit" in doc_lower or "overlay" in doc_lower or "overlaid" in doc_lower, (
+        "launch_app docstring must describe inherit/overlay semantics for env"
+    )
